@@ -13,6 +13,9 @@ export interface Client {
     amount: number;
     notes: string;
     createdAt: string;
+    lat?: number;
+    lng?: number;
+    routeScreenshot?: string; // base64 data URL of route overlay on satellite
 }
 
 export interface Session {
@@ -59,6 +62,11 @@ interface AppState {
     activeWorkdaySessionId: string | null;
     activeMowSessionId: string | null;
 
+    // Home address for daily route optimization
+    homeAddress: string;
+    homeLat?: number;
+    homeLng?: number;
+
     // Actions
     addClient: (client: Omit<Client, 'id' | 'createdAt'>) => void;
     updateClient: (id: string, client: Partial<Client>) => void;
@@ -75,6 +83,10 @@ interface AppState {
 
     addGasLog: (log: Omit<GasLog, 'id' | 'date'>) => void;
     addMaintenanceLog: (log: Omit<MaintenanceLog, 'id' | 'date' | 'totalCost'>) => void;
+
+    // Route features
+    saveClientRoute: (clientId: string, screenshot: string, lat: number, lng: number) => void;
+    setHomeAddress: (address: string, lat: number, lng: number) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -86,6 +98,7 @@ export const useStore = create<AppState>()(
             maintenanceLogs: [],
             activeWorkdaySessionId: null,
             activeMowSessionId: null,
+            homeAddress: '',
 
             addClient: (client) =>
                 set((state) => ({
@@ -294,6 +307,16 @@ export const useStore = create<AppState>()(
                         ],
                     };
                 }),
+
+            saveClientRoute: (clientId, screenshot, lat, lng) =>
+                set((state) => ({
+                    clients: state.clients.map((c) =>
+                        c.id === clientId ? { ...c, routeScreenshot: screenshot, lat, lng } : c
+                    ),
+                })),
+
+            setHomeAddress: (address, lat, lng) =>
+                set(() => ({ homeAddress: address, homeLat: lat, homeLng: lng })),
         }),
         {
             name: 'mow-log-storage',

@@ -187,6 +187,24 @@ export default function AddressesPage() {
                                 {isActiveMowing && (
                                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70"></div>
                                 )}
+
+                                {/* Route Screenshot Thumbnail */}
+                                {client.routeScreenshot && (
+                                    <button
+                                        onClick={() => router.push(`/route-planner?lat=${client.lat}&lng=${client.lng}`)}
+                                        className="mb-4 rounded-xl overflow-hidden border border-white/10 hover:border-primary/40 transition-colors group relative"
+                                    >
+                                        <img
+                                            src={client.routeScreenshot}
+                                            alt={`Route for ${client.name}`}
+                                            className="w-full h-24 object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <span className="text-xs font-semibold text-white">Open Route</span>
+                                        </div>
+                                    </button>
+                                )}
+
                                 <div className="flex items-start justify-between mb-5 relative z-10">
                                     <div className="flex gap-4 items-start">
                                         <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg", avatarStyle.bg, avatarStyle.text)}>

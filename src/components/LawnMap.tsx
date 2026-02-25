@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as turf from "@turf/turf";
 import { planMowingRoute, deckWidthFromInches, type DischargeMode, type RoutePlan } from "@/lib/route-planner";
+import { useStore } from "@/lib/store";
 import type { Feature, Polygon, Position } from "geojson";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -44,6 +45,12 @@ export default function LawnMap({
     const [lawnPolygon, setLawnPolygon] = useState<Feature<Polygon> | null>(null);
     const [obstacles, setObstacles] = useState<Feature<Polygon>[]>([]);
     const [drawMode, setDrawMode] = useState<DrawMode>("lawn");
+
+    // Save to client state
+    const { clients, saveClientRoute } = useStore();
+    const [showClientPicker, setShowClientPicker] = useState(false);
+    const [savingToClient, setSavingToClient] = useState<string | null>(null);
+    const [savedSuccess, setSavedSuccess] = useState(false);
 
     // ─── Initialize Map ─────────────────────────
     useEffect(() => {
@@ -447,6 +454,76 @@ export default function LawnMap({
                         <p className="text-[10px] text-muted-foreground uppercase">Angle</p>
                         <p className="text-sm font-bold text-foreground">{routePlan.bestAngleDeg}°</p>
                     </div>
+                </div>
+            )}
+
+            {/* Save to Client */}
+            {routePlan && showRoute && (
+                <div className="relative">
+                    {savedSuccess ? (
+                        <div className="w-full py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold text-sm text-center">
+                            ✓ Route saved to client!
+                        </div>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => setShowClientPicker(!showClientPicker)}
+                                className="w-full py-3 rounded-xl bg-white/[0.06] border border-white/10 text-foreground font-semibold text-sm hover:border-primary/40 hover:bg-primary/5 transition-all"
+                            >
+                                📸 Save Route to Client
+                            </button>
+                            {showClientPicker && (
+                                <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[#1a201c] border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+                                    {clients.length === 0 ? (
+                                        <div className="p-4 text-sm text-muted-foreground text-center">No clients yet. Add one on the Addresses tab.</div>
+                                    ) : (
+                                        clients.map((client) => (
+                                            <button
+                                                key={client.id}
+                                                onClick={async () => {
+                                                    setSavingToClient(client.id);
+                                                    setShowClientPicker(false);
+                                                    try {
+                                                        // Dynamic import to avoid SSR issues
+                                                        const html2canvas = (await import("html2canvas")).default;
+                                                        const mapEl = mapContainerRef.current;
+                                                        if (!mapEl || !mapRef.current) return;
+
+                                                        const canvas = await html2canvas(mapEl, {
+                                                            useCORS: true,
+                                                            allowTaint: true,
+                                                            backgroundColor: '#0a0f0d',
+                                                            scale: 1,
+                                                        });
+                                                        const screenshot = canvas.toDataURL('image/jpeg', 0.7);
+
+                                                        const center = mapRef.current.getCenter();
+                                                        saveClientRoute(client.id, screenshot, center.lat, center.lng);
+
+                                                        setSavedSuccess(true);
+                                                        setTimeout(() => setSavedSuccess(false), 3000);
+                                                    } catch (err) {
+                                                        console.error('Screenshot failed:', err);
+                                                    }
+                                                    setSavingToClient(null);
+                                                }}
+                                                disabled={savingToClient !== null}
+                                                className="w-full px-4 py-3 text-left text-sm hover:bg-primary/10 transition-colors border-b border-white/5 last:border-0 flex items-center justify-between"
+                                            >
+                                                <div>
+                                                    <span className="text-white font-medium">{client.name}</span>
+                                                    <span className="text-muted-foreground ml-2 text-xs">{client.address}</span>
+                                                </div>
+                                                {savingToClient === client.id && (
+                                                    <span className="text-primary text-xs animate-pulse">Saving...</span>
+                                                )}
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
             )}
         </div>
