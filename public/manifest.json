@@ -1,0 +1,22 @@
+{
+    "name": "Mow Log PRO",
+    "short_name": "MowLog",
+    "description": "Offline-first lawn care management app.",
+    "start_url": "/addresses",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0a0f0d",
+    "theme_color": "#aaff00",
+    "icons": [
+        {
+            "src": "/file.svg",
+            "sizes": "192x192",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "/globe.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml"
+        }
+    ]
+}
