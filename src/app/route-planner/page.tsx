@@ -32,10 +32,12 @@ export default function RoutePlannerPage() {
             {/* Instructions */}
             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                    <strong className="text-foreground">How to use:</strong>{" "}
-                    Search an address, then use the polygon tool{" "}
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-mono">▯</span>{" "}
-                    in the top-right corner to draw the lawn boundary. Set your mower specs and hit Generate.
+                    <strong className="text-foreground">Step 1:</strong>{" "}
+                    Search address → draw the <span className="text-primary font-semibold">lawn boundary</span> (green).{" "}
+                    <strong className="text-foreground">Step 2:</strong>{" "}
+                    Switch to <span className="text-red-400 font-semibold">Mark Obstacle</span> → draw the house, driveway, beds (red).{" "}
+                    <strong className="text-foreground">Step 3:</strong>{" "}
+                    Set mower specs → Generate Route.
                 </p>
             </div>
 
