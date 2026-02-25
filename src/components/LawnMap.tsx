@@ -227,35 +227,63 @@ export default function LawnMap({
 
         routeLayerRef.current.clearLayers();
 
-        // Draw headlands (cyan dashed)
+        // Draw headlands (faint cyan, thin)
         plan.headlands.forEach(h => {
             const coords = h.geometry.coordinates.map(c => [c[1], c[0]] as [number, number]);
             L.polyline(coords, {
                 color: "#00e5ff",
-                weight: 2,
-                opacity: 0.8,
-                dashArray: "6, 4",
+                weight: 1.5,
+                opacity: 0.4,
+                dashArray: "8, 6",
             }).addTo(routeLayerRef.current!);
         });
 
-        // Draw stripes (alternating greens with start markers)
+        // Draw stripes (thin, semi-transparent, alternating shades)
         plan.stripes.forEach((s, i) => {
             const coords = s.geometry.coordinates.map(c => [c[1], c[0]] as [number, number]);
             L.polyline(coords, {
-                color: i % 2 === 0 ? "#aaff00" : "#88dd00",
-                weight: 3,
-                opacity: 0.9,
+                color: i % 2 === 0 ? "#aaff00" : "#77cc00",
+                weight: 2,
+                opacity: 0.55,
             }).addTo(routeLayerRef.current!);
+        });
 
-            if (coords.length > 0) {
-                L.circleMarker(coords[0], {
-                    radius: 3,
+        // Draw subtle U-turn connectors between consecutive stripes
+        for (let i = 0; i < plan.stripes.length - 1; i++) {
+            const curr = plan.stripes[i].geometry.coordinates;
+            const next = plan.stripes[i + 1].geometry.coordinates;
+            if (curr.length < 2 || next.length < 2) continue;
+
+            // End of current stripe → start of next stripe
+            const endPt = curr[curr.length - 1];
+            const startPt = next[0];
+
+            // Only connect if they're close (same zone)
+            const dist = Math.hypot(endPt[0] - startPt[0], endPt[1] - startPt[1]);
+            if (dist < 0.001) { // ~100m threshold in degrees
+                // Create a small curved connector
+                const midLon = (endPt[0] + startPt[0]) / 2;
+                const midLat = (endPt[1] + startPt[1]) / 2;
+                // Offset the midpoint slightly outward for curvature
+                const perpLon = -(startPt[1] - endPt[1]) * 0.3;
+                const perpLat = (startPt[0] - endPt[0]) * 0.3;
+                const ctrlPt: [number, number] = [midLat + perpLat, midLon + perpLon];
+
+                const arc: [number, number][] = [];
+                for (let t = 0; t <= 1; t += 0.2) {
+                    const lat = (1 - t) * (1 - t) * endPt[1] + 2 * (1 - t) * t * ctrlPt[0] + t * t * startPt[1];
+                    const lon = (1 - t) * (1 - t) * endPt[0] + 2 * (1 - t) * t * ctrlPt[1] + t * t * startPt[0];
+                    arc.push([lat, lon]);
+                }
+
+                L.polyline(arc, {
                     color: "#aaff00",
-                    fillColor: "#aaff00",
-                    fillOpacity: 1,
+                    weight: 1,
+                    opacity: 0.3,
+                    dashArray: "3, 3",
                 }).addTo(routeLayerRef.current!);
             }
-        });
+        }
 
         setRoutePlan(plan);
         setShowRoute(true);
