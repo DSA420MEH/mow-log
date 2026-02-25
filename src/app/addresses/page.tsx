@@ -5,7 +5,7 @@ import { useStore, BillingType } from "@/lib/store";
 import { AddAddressForm } from "@/components/AddAddressForm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Pencil, Timer, ListTodo, Plus, Search } from "lucide-react";
+import { MapPin, Pencil, Timer, ListTodo, Plus, Search, Route } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SettingsModal } from "@/components/SettingsModal";
@@ -188,20 +188,29 @@ export default function AddressesPage() {
                                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70"></div>
                                 )}
 
-                                {/* Route Screenshot Thumbnail */}
-                                {client.routeScreenshot && (
+                                {/* Route Link / Thumbnail */}
+                                {client.lat && client.lng && (
                                     <button
                                         onClick={() => router.push(`/route-planner?lat=${client.lat}&lng=${client.lng}`)}
-                                        className="mb-4 rounded-xl overflow-hidden border border-white/10 hover:border-primary/40 transition-colors group relative"
+                                        className="mb-4 w-full rounded-xl overflow-hidden border border-white/10 hover:border-primary/40 transition-colors group relative bg-white/[0.03]"
                                     >
-                                        <img
-                                            src={client.routeScreenshot}
-                                            alt={`Route for ${client.name}`}
-                                            className="w-full h-24 object-cover"
-                                        />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <span className="text-xs font-semibold text-white">Open Route</span>
-                                        </div>
+                                        {(client.routeScreenshot && client.routeScreenshot.startsWith('data:image')) ? (
+                                            <>
+                                                <img
+                                                    src={client.routeScreenshot}
+                                                    alt={`Route for ${client.name}`}
+                                                    className="w-full h-24 object-cover"
+                                                />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <span className="text-xs font-semibold text-white">Open Route</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="w-full h-10 flex items-center justify-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                                                <Route className="w-4 h-4" />
+                                                <span className="text-xs font-semibold">Open Saved Route</span>
+                                            </div>
+                                        )}
                                     </button>
                                 )}
 

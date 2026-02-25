@@ -483,28 +483,36 @@ export default function LawnMap({
                                                 onClick={async () => {
                                                     setSavingToClient(client.id);
                                                     setShowClientPicker(false);
+
+                                                    const center = mapRef.current?.getCenter();
+                                                    if (!center) { setSavingToClient(null); return; }
+
+                                                    // Always save coordinates first
+                                                    let screenshot = 'saved';
+
+                                                    // Try screenshot as bonus (may fail due to CORS on tiles)
                                                     try {
-                                                        // Dynamic import to avoid SSR issues
                                                         const html2canvas = (await import("html2canvas")).default;
                                                         const mapEl = mapContainerRef.current;
-                                                        if (!mapEl || !mapRef.current) return;
-
-                                                        const canvas = await html2canvas(mapEl, {
-                                                            useCORS: true,
-                                                            allowTaint: true,
-                                                            backgroundColor: '#0a0f0d',
-                                                            scale: 1,
-                                                        });
-                                                        const screenshot = canvas.toDataURL('image/jpeg', 0.7);
-
-                                                        const center = mapRef.current.getCenter();
-                                                        saveClientRoute(client.id, screenshot, center.lat, center.lng);
-
-                                                        setSavedSuccess(true);
-                                                        setTimeout(() => setSavedSuccess(false), 3000);
+                                                        if (mapEl) {
+                                                            const canvas = await html2canvas(mapEl, {
+                                                                useCORS: true,
+                                                                allowTaint: true,
+                                                                backgroundColor: '#0a0f0d',
+                                                                scale: 1,
+                                                                logging: false,
+                                                            });
+                                                            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                                                            // Only use if it's a real image (not blank)
+                                                            if (dataUrl.length > 1000) screenshot = dataUrl;
+                                                        }
                                                     } catch (err) {
-                                                        console.error('Screenshot failed:', err);
+                                                        console.warn('Screenshot capture skipped:', err);
                                                     }
+
+                                                    saveClientRoute(client.id, screenshot, center.lat, center.lng);
+                                                    setSavedSuccess(true);
+                                                    setTimeout(() => setSavedSuccess(false), 3000);
                                                     setSavingToClient(null);
                                                 }}
                                                 disabled={savingToClient !== null}
