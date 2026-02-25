@@ -415,7 +415,7 @@ export default function LawnMap({
 
             {/* Route Stats */}
             {routePlan && showRoute && (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                     <div className="text-center p-2.5 rounded-xl border border-white/5 bg-white/[0.02]">
                         <p className="text-[10px] text-muted-foreground uppercase">Distance</p>
                         <p className="text-sm font-bold text-foreground">{routePlan.estimatedDistanceMeters.toFixed(0)}m</p>
@@ -423,6 +423,10 @@ export default function LawnMap({
                     <div className="text-center p-2.5 rounded-xl border border-white/5 bg-white/[0.02]">
                         <p className="text-[10px] text-muted-foreground uppercase">Stripes</p>
                         <p className="text-sm font-bold text-foreground">{routePlan.stripes.length}</p>
+                    </div>
+                    <div className="text-center p-2.5 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <p className="text-[10px] text-muted-foreground uppercase">Zones</p>
+                        <p className="text-sm font-bold text-foreground">{routePlan.cellCount}</p>
                     </div>
                     <div className="text-center p-2.5 rounded-xl border border-white/5 bg-white/[0.02]">
                         <p className="text-[10px] text-muted-foreground uppercase">Angle</p>
