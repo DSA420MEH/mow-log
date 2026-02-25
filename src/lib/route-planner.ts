@@ -1,23 +1,23 @@
 /**
- * Smart Mowing Route Planner — Core Algorithm
+ * Smart Mowing Route Planner — Core Algorithm (v2 - robust)
  * 
  * Generates optimal mowing paths for a given lawn polygon:
  * - Headland loops (perimeter passes) for clean edges
  * - Boustrophedon (serpentine) stripes with discharge awareness
- * - Obstacle avoidance to prevent blowing clippings onto driveways/houses
+ * - Obstacle avoidance
  * 
  * Uses Turf.js for all geospatial operations.
  */
 import * as turf from "@turf/turf";
-import type { Feature, Polygon, LineString, Position, GeoJsonProperties } from "geojson";
+import type { Feature, Polygon, MultiPolygon, LineString, Position } from "geojson";
 
 export type DischargeMode = "left" | "right" | "rear" | "mulch";
 
 export interface MowerConfig {
-    deckWidthMeters: number;    // e.g., 0.533 for 21", 0.914 for 36"
+    deckWidthMeters: number;
     discharge: DischargeMode;
-    overlapRatio: number;       // 0.90 = 10% overlap
-    headlandLaps: number;       // 1-2 recommended
+    overlapRatio: number;
+    headlandLaps: number;
 }
 
 export interface RoutePlan {
@@ -27,15 +27,74 @@ export interface RoutePlan {
     areaSqMeters: number;
     areaSqFeet: number;
     estimatedDistanceMeters: number;
-    estimatedTimeMins: number;  // at ~5 km/h walking pace
+    estimatedTimeMins: number;
 }
 
 const DEFAULT_CONFIG: MowerConfig = {
-    deckWidthMeters: 0.533,  // 21" residential mower
+    deckWidthMeters: 0.533,
     discharge: "right",
     overlapRatio: 0.93,
     headlandLaps: 2,
 };
+
+// ─── Clip Line to Polygon (robust method) ───────────
+// Creates segments of the line that fall INSIDE the polygon
+function clipLineToPolygon(
+    line: Feature<LineString>,
+    polygon: Feature<Polygon> | Feature<MultiPolygon>
+): Feature<LineString>[] {
+    const results: Feature<LineString>[] = [];
+
+    try {
+        // Convert polygon boundary to line(s), find intersections, then keep inside segments
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const polyBoundary = turf.polygonToLine(polygon as any);
+
+        // Get intersection points between line and polygon boundary
+        let intersectPts: Position[] = [];
+
+        if (polyBoundary.type === "Feature") {
+            const pts = turf.lineIntersect(line, polyBoundary);
+            intersectPts = pts.features.map(f => f.geometry.coordinates);
+        } else if (polyBoundary.type === "FeatureCollection") {
+            for (const feat of polyBoundary.features) {
+                const pts = turf.lineIntersect(line, feat);
+                intersectPts.push(...pts.features.map(f => f.geometry.coordinates));
+            }
+        }
+
+        if (intersectPts.length < 2) return results;
+
+        // Sort intersection points along the line direction
+        const lineStart = line.geometry.coordinates[0];
+        intersectPts.sort((a, b) => {
+            const distA = Math.hypot(a[0] - lineStart[0], a[1] - lineStart[1]);
+            const distB = Math.hypot(b[0] - lineStart[0], b[1] - lineStart[1]);
+            return distA - distB;
+        });
+
+        // Create segments between consecutive pairs and check if midpoint is inside polygon
+        for (let i = 0; i < intersectPts.length - 1; i++) {
+            const p1: Position = intersectPts[i];
+            const p2: Position = intersectPts[i + 1];
+            const midPoint = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const inside = turf.booleanPointInPolygon(midPoint, polygon as any);
+            if (inside) {
+                const segment = turf.lineString([p1, p2]);
+                const segLen = turf.length(segment, { units: "meters" });
+                if (segLen >= 0.5) {
+                    results.push(segment);
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("clipLineToPolygon error:", e);
+    }
+
+    return results;
+}
 
 // ─── Headland Generation ────────────────────────────
 function generateHeadlands(
@@ -43,83 +102,50 @@ function generateHeadlands(
     config: MowerConfig
 ): { headlands: Feature<LineString>[]; innerPoly: Feature<Polygon> | null } {
     const headlands: Feature<LineString>[] = [];
-    let current = lawn;
+    let currentPoly: Feature<Polygon> | Feature<MultiPolygon> = lawn;
 
     for (let i = 0; i < config.headlandLaps; i++) {
-        const offset = -(config.deckWidthMeters * config.overlapRatio * 0.001); // rough degrees offset
-        // Use buffer with negative value to shrink polygon
-        const buffered = turf.buffer(current, -(config.deckWidthMeters / 2), { units: "meters" });
+        try {
+            const buffered = turf.buffer(currentPoly, -(config.deckWidthMeters * 0.8), { units: "meters" });
 
-        if (!buffered || (buffered.geometry.type !== "Polygon" && buffered.geometry.type !== "MultiPolygon")) break;
+            if (!buffered) break;
 
-        // Convert polygon boundary to linestring for the headland pass
-        const coords = buffered.geometry.type === "Polygon"
-            ? buffered.geometry.coordinates[0]
-            : buffered.geometry.coordinates[0][0]; // Take first polygon of MultiPolygon
-
-        const loop = turf.lineString(coords as Position[], { lap: i + 1, type: "headland" });
-        headlands.push(loop);
-
-        // The inner polygon becomes the area for stripes
-        current = buffered.geometry.type === "Polygon"
-            ? buffered as Feature<Polygon>
-            : turf.polygon(buffered.geometry.coordinates[0]) as Feature<Polygon>;
-    }
-
-    return {
-        headlands,
-        innerPoly: current as Feature<Polygon>,
-    };
-}
-
-// ─── Stripe Angle Scoring ───────────────────────────
-function scoreAngle(
-    innerPoly: Feature<Polygon>,
-    angleDeg: number,
-    config: MowerConfig,
-    obstacles: Feature<Polygon>[]
-): { score: number; stripes: Feature<LineString>[] } {
-    const stripes = generateStripesAtAngle(innerPoly, angleDeg, config);
-
-    // Score 1: prefer angles that produce fewer, longer stripes
-    const totalLength = stripes.reduce((sum, s) => sum + turf.length(s, { units: "meters" }), 0);
-    const avgLength = stripes.length > 0 ? totalLength / stripes.length : 0;
-    const lengthScore = avgLength; // higher = better
-
-    // Score 2: penalize short fragments
-    const shortFragments = stripes.filter(s => turf.length(s, { units: "meters" }) < 2).length;
-    const fragmentPenalty = shortFragments * 10;
-
-    // Score 3: penalize angles that blow discharge toward obstacles
-    let dischargePenalty = 0;
-    if (config.discharge !== "mulch" && obstacles.length > 0) {
-        const dischargeAngleOffset = config.discharge === "left" ? -90 : config.discharge === "right" ? 90 : 0;
-        const dischargeDir = (angleDeg + dischargeAngleOffset) % 360;
-
-        // Buffer obstacles and check proximity
-        const obstacleUnion = obstacles.length > 0 ? turf.union(turf.featureCollection(obstacles)) : null;
-        if (obstacleUnion) {
-            const bufferedObstacles = turf.buffer(obstacleUnion, config.deckWidthMeters * 2, { units: "meters" });
-            if (bufferedObstacles) {
-                stripes.forEach(stripe => {
-                    try {
-                        const intersects = turf.booleanIntersects(stripe, bufferedObstacles);
-                        if (intersects) dischargePenalty += 5;
-                    } catch {
-                        // Ignore intersection errors
-                    }
+            let coords: Position[];
+            if (buffered.geometry.type === "Polygon") {
+                coords = buffered.geometry.coordinates[0];
+                currentPoly = buffered as Feature<Polygon>;
+            } else if (buffered.geometry.type === "MultiPolygon") {
+                // Take the largest polygon
+                let largestIdx = 0;
+                let largestArea = 0;
+                buffered.geometry.coordinates.forEach((ring, idx) => {
+                    const a = turf.area(turf.polygon(ring));
+                    if (a > largestArea) { largestArea = a; largestIdx = idx; }
                 });
+                coords = buffered.geometry.coordinates[largestIdx][0];
+                currentPoly = turf.polygon(buffered.geometry.coordinates[largestIdx]) as Feature<Polygon>;
+            } else {
+                break;
             }
+
+            if (coords.length >= 4) {
+                headlands.push(turf.lineString(coords, { lap: i + 1, type: "headland" }));
+            }
+        } catch (e) {
+            console.warn("Headland generation error:", e);
+            break;
         }
     }
 
-    return {
-        score: lengthScore - fragmentPenalty - dischargePenalty,
-        stripes,
-    };
+    // Return inner polygon for stripe generation
+    const inner = currentPoly.geometry.type === "Polygon"
+        ? currentPoly as Feature<Polygon>
+        : null;
+
+    return { headlands, innerPoly: inner };
 }
 
-// ─── Stripe Generation at a Given Angle ─────────────
+// ─── Stripe Generation ──────────────────────────────
 function generateStripesAtAngle(
     innerPoly: Feature<Polygon>,
     angleDeg: number,
@@ -129,117 +155,140 @@ function generateStripesAtAngle(
     const center = turf.center(innerPoly);
     const centerCoord = center.geometry.coordinates;
 
-    // Calculate stripe spacing in meters
     const spacing = config.deckWidthMeters * config.overlapRatio;
-
-    // Determine how many stripes we need based on the bbox diagonal
-    const diagonal = turf.distance(
-        [bbox[0], bbox[1]],
-        [bbox[2], bbox[3]],
-        { units: "meters" }
-    );
-    const numStripes = Math.ceil(diagonal / spacing) + 4;
-
-    const stripes: Feature<LineString>[] = [];
     const angleRad = (angleDeg * Math.PI) / 180;
 
-    // Direction perpendicular to stripe angle (for offsetting)
+    // Calculate diagonal of bounding box in meters
+    const diagonal = turf.distance(
+        [bbox[0], bbox[1]], [bbox[2], bbox[3]],
+        { units: "meters" }
+    );
+
+    const numStripes = Math.ceil(diagonal / spacing) + 4;
+    const lineHalfLen = diagonal / 2 + 20;
+
+    // Conversion factors (meters to degrees)
+    const latPerM = 1 / 111320;
+    const lonPerM = 1 / (111320 * Math.cos((centerCoord[1] * Math.PI) / 180));
+
+    // Direction vectors
     const perpDx = Math.cos(angleRad + Math.PI / 2);
     const perpDy = Math.sin(angleRad + Math.PI / 2);
-
-    // Direction along stripe
     const stripeDx = Math.cos(angleRad);
     const stripeDy = Math.sin(angleRad);
 
-    // Length of each stripe line (extend well beyond bbox)
-    const lineHalfLen = diagonal / 2 + 50; // meters extra
+    const allStripes: Feature<LineString>[] = [];
 
-    for (let i = -numStripes / 2; i <= numStripes / 2; i++) {
-        // Offset from center perpendicular to stripe direction
+    for (let i = Math.floor(-numStripes / 2); i <= Math.ceil(numStripes / 2); i++) {
         const offsetM = i * spacing;
 
-        // Convert meter offsets to approximate degree offsets
-        const latPerM = 1 / 111320;
-        const lonPerM = 1 / (111320 * Math.cos((centerCoord[1] * Math.PI) / 180));
+        const midLon = centerCoord[0] + offsetM * perpDx * lonPerM;
+        const midLat = centerCoord[1] + offsetM * perpDy * latPerM;
 
-        const offsetLon = offsetM * perpDx * lonPerM;
-        const offsetLat = offsetM * perpDy * latPerM;
-
-        const midPoint: Position = [
-            centerCoord[0] + offsetLon,
-            centerCoord[1] + offsetLat,
+        const startPt: Position = [
+            midLon - lineHalfLen * stripeDx * lonPerM,
+            midLat - lineHalfLen * stripeDy * latPerM,
+        ];
+        const endPt: Position = [
+            midLon + lineHalfLen * stripeDx * lonPerM,
+            midLat + lineHalfLen * stripeDy * latPerM,
         ];
 
-        // Create line extending in both directions from midpoint
-        const startPoint: Position = [
-            midPoint[0] - lineHalfLen * stripeDx * lonPerM,
-            midPoint[1] - lineHalfLen * stripeDy * latPerM,
-        ];
-        const endPoint: Position = [
-            midPoint[0] + lineHalfLen * stripeDx * lonPerM,
-            midPoint[1] + lineHalfLen * stripeDy * latPerM,
-        ];
-
-        const line = turf.lineString([startPoint, endPoint]);
-
-        // Clip line to inner polygon
-        try {
-            const clipped = turf.lineIntersect(line, innerPoly);
-            if (clipped.features.length >= 2) {
-                // Sort intersection points along the line
-                const points = clipped.features.map(f => f.geometry.coordinates);
-                // Create line segments from pairs of intersection points
-                for (let j = 0; j < points.length - 1; j += 2) {
-                    const segment = turf.lineString([points[j], points[j + 1]], {
-                        type: "stripe",
-                        index: stripes.length,
-                        direction: stripes.length % 2 === 0 ? "forward" : "reverse",
-                    });
-                    const segLen = turf.length(segment, { units: "meters" });
-                    if (segLen >= 1) { // Skip tiny fragments
-                        stripes.push(segment);
-                    }
-                }
-            }
-        } catch {
-            // Skip lines that don't intersect
-        }
+        const scanLine = turf.lineString([startPt, endPt]);
+        const clipped = clipLineToPolygon(scanLine, innerPoly);
+        allStripes.push(...clipped);
     }
 
-    // Reverse every other stripe for boustrophedon (serpentine) pattern
-    return stripes.map((stripe, idx) => {
+    // Apply boustrophedon (serpentine): reverse every other stripe
+    return allStripes.map((stripe, idx) => {
         if (idx % 2 === 1) {
             const coords = stripe.geometry.coordinates.slice().reverse();
-            return turf.lineString(coords, stripe.properties);
+            return turf.lineString(coords, { type: "stripe", index: idx, direction: "reverse" });
         }
-        return stripe;
+        return turf.lineString(stripe.geometry.coordinates, { type: "stripe", index: idx, direction: "forward" });
     });
 }
 
-// ─── Main Route Planning Function ───────────────────
+// ─── Angle Scoring ──────────────────────────────────
+function scoreAngle(
+    innerPoly: Feature<Polygon>,
+    angleDeg: number,
+    config: MowerConfig,
+    obstacles: Feature<Polygon>[]
+): { score: number; stripes: Feature<LineString>[] } {
+    const stripes = generateStripesAtAngle(innerPoly, angleDeg, config);
+
+    if (stripes.length === 0) return { score: -9999, stripes };
+
+    // Score: prefer longer average stripe length, fewer short fragments
+    const lengths = stripes.map(s => turf.length(s, { units: "meters" }));
+    const avgLen = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+    const shortCount = lengths.filter(l => l < 2).length;
+
+    let score = avgLen * 10 - shortCount * 5;
+
+    // Discharge penalty for stripes near obstacles
+    if (config.discharge !== "mulch" && obstacles.length > 0) {
+        try {
+            const obsUnion = turf.union(turf.featureCollection(obstacles));
+            if (obsUnion) {
+                const obsBuffer = turf.buffer(obsUnion, config.deckWidthMeters * 3, { units: "meters" });
+                if (obsBuffer) {
+                    let nearCount = 0;
+                    stripes.forEach(s => {
+                        try {
+                            if (turf.booleanIntersects(s, obsBuffer)) nearCount++;
+                        } catch { /* skip */ }
+                    });
+                    score -= nearCount * 3;
+                }
+            }
+        } catch { /* skip */ }
+    }
+
+    return { score, stripes };
+}
+
+// ─── Main Entry Point ───────────────────────────────
 export function planMowingRoute(
     lawnPolygon: Feature<Polygon>,
     obstacles: Feature<Polygon>[] = [],
     config: Partial<MowerConfig> = {}
 ): RoutePlan {
     const cfg = { ...DEFAULT_CONFIG, ...config };
+
+    console.log("[RoutePlanner] Starting with", obstacles.length, "obstacles");
+
     const area = turf.area(lawnPolygon);
 
-    // Cut obstacles out of lawn
-    let effectiveLawn = lawnPolygon;
+    // Subtract obstacles from lawn
+    let effectiveLawn: Feature<Polygon> = lawnPolygon;
     for (const obs of obstacles) {
         try {
             const diff = turf.difference(turf.featureCollection([effectiveLawn, obs]));
-            if (diff && diff.geometry.type === "Polygon") {
-                effectiveLawn = diff as Feature<Polygon>;
+            if (diff) {
+                if (diff.geometry.type === "Polygon") {
+                    effectiveLawn = diff as Feature<Polygon>;
+                } else if (diff.geometry.type === "MultiPolygon") {
+                    // Take the largest polygon from the result
+                    let largestIdx = 0;
+                    let largestArea = 0;
+                    diff.geometry.coordinates.forEach((ring, idx) => {
+                        const a = turf.area(turf.polygon(ring));
+                        if (a > largestArea) { largestArea = a; largestIdx = idx; }
+                    });
+                    effectiveLawn = turf.polygon(diff.geometry.coordinates[largestIdx]) as Feature<Polygon>;
+                }
             }
-        } catch {
-            // Skip if obstacle subtraction fails
+        } catch (e) {
+            console.warn("[RoutePlanner] Obstacle subtraction error:", e);
         }
     }
 
     // Generate headlands
     const { headlands, innerPoly } = generateHeadlands(effectiveLawn, cfg);
+
+    console.log("[RoutePlanner] Headlands:", headlands.length, "InnerPoly:", !!innerPoly);
 
     if (!innerPoly) {
         return {
@@ -248,33 +297,37 @@ export function planMowingRoute(
             bestAngleDeg: 0,
             areaSqMeters: area,
             areaSqFeet: area * 10.7639,
-            estimatedDistanceMeters: 0,
+            estimatedDistanceMeters: headlands.reduce((s, h) => s + turf.length(h, { units: "meters" }), 0),
             estimatedTimeMins: 0,
         };
     }
 
-    // Test multiple angles and pick the best one
-    const candidateAngles = [0, 30, 45, 60, 90, 120, 135, 150];
+    // Test angles and pick the best
+    const angles = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165];
     let bestScore = -Infinity;
     let bestStripes: Feature<LineString>[] = [];
     let bestAngle = 0;
 
-    for (const angle of candidateAngles) {
-        const { score, stripes } = scoreAngle(innerPoly, angle, cfg, obstacles);
-        if (score > bestScore) {
-            bestScore = score;
-            bestStripes = stripes;
-            bestAngle = angle;
+    for (const angle of angles) {
+        try {
+            const { score, stripes } = scoreAngle(innerPoly, angle, cfg, obstacles);
+            console.log(`[RoutePlanner] Angle ${angle}° → ${stripes.length} stripes, score ${score.toFixed(1)}`);
+            if (score > bestScore) {
+                bestScore = score;
+                bestStripes = stripes;
+                bestAngle = angle;
+            }
+        } catch (e) {
+            console.warn(`[RoutePlanner] Angle ${angle}° failed:`, e);
         }
     }
 
-    // Calculate total distance
-    const headlandDist = headlands.reduce((sum, h) => sum + turf.length(h, { units: "meters" }), 0);
-    const stripeDist = bestStripes.reduce((sum, s) => sum + turf.length(s, { units: "meters" }), 0);
-    const totalDist = headlandDist + stripeDist;
+    console.log(`[RoutePlanner] Best angle: ${bestAngle}° with ${bestStripes.length} stripes`);
 
-    // Estimate time at ~5 km/h (83 m/min) walking pace
-    const estimatedMins = totalDist / 83;
+    // Calculate totals
+    const headlandDist = headlands.reduce((s, h) => s + turf.length(h, { units: "meters" }), 0);
+    const stripeDist = bestStripes.reduce((s, st) => s + turf.length(st, { units: "meters" }), 0);
+    const totalDist = headlandDist + stripeDist;
 
     return {
         headlands,
@@ -283,11 +336,11 @@ export function planMowingRoute(
         areaSqMeters: area,
         areaSqFeet: area * 10.7639,
         estimatedDistanceMeters: totalDist,
-        estimatedTimeMins: estimatedMins,
+        estimatedTimeMins: totalDist / 83,
     };
 }
 
 // ─── Helpers ────────────────────────────────────────
 export function deckWidthFromInches(inches: number): number {
-    return inches * 0.0254; // inches to meters
+    return inches * 0.0254;
 }

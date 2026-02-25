@@ -7,6 +7,7 @@ import type { Feature, Polygon, Position } from "geojson";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
+import "@/styles/leaflet-overrides.css";
 import "leaflet-draw";
 
 // ─── Types ──────────────────────────────────────
@@ -300,8 +301,8 @@ export default function LawnMap({
                 <button
                     onClick={() => setDrawMode("lawn")}
                     className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${drawMode === "lawn"
-                            ? "bg-primary/20 text-primary border border-primary/40"
-                            : "bg-white/[0.03] text-muted-foreground border border-white/10 hover:border-white/20"
+                        ? "bg-primary/20 text-primary border border-primary/40"
+                        : "bg-white/[0.03] text-muted-foreground border border-white/10 hover:border-white/20"
                         }`}
                 >
                     🌿 Draw Lawn
@@ -309,8 +310,8 @@ export default function LawnMap({
                 <button
                     onClick={() => setDrawMode("obstacle")}
                     className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${drawMode === "obstacle"
-                            ? "bg-red-500/20 text-red-400 border border-red-500/40"
-                            : "bg-white/[0.03] text-muted-foreground border border-white/10 hover:border-white/20"
+                        ? "bg-red-500/20 text-red-400 border border-red-500/40"
+                        : "bg-white/[0.03] text-muted-foreground border border-white/10 hover:border-white/20"
                         }`}
                 >
                     🏠 Mark Obstacle
@@ -328,8 +329,8 @@ export default function LawnMap({
 
             {/* Mode hint */}
             <div className={`px-3 py-1.5 rounded-lg text-[11px] ${drawMode === "lawn"
-                    ? "bg-primary/5 text-primary/70 border border-primary/20"
-                    : "bg-red-500/5 text-red-400/70 border border-red-500/20"
+                ? "bg-primary/5 text-primary/70 border border-primary/20"
+                : "bg-red-500/5 text-red-400/70 border border-red-500/20"
                 }`}>
                 {drawMode === "lawn"
                     ? "Draw the outer lawn boundary using the polygon tool ▯ in the top-right"
