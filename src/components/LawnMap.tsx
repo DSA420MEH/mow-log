@@ -111,7 +111,7 @@ export default function LawnMap({
                     shapeOptions: {
                         color,
                         weight: 2,
-                        fillOpacity: isLawn ? 0.15 : 0.3,
+                        fillOpacity: isLawn ? 0.05 : 0.3,
                         fillColor,
                     },
                 },
@@ -119,7 +119,7 @@ export default function LawnMap({
                     shapeOptions: {
                         color,
                         weight: 2,
-                        fillOpacity: isLawn ? 0.15 : 0.3,
+                        fillOpacity: isLawn ? 0.05 : 0.3,
                         fillColor,
                     },
                 },
@@ -227,24 +227,20 @@ export default function LawnMap({
 
         routeLayerRef.current.clearLayers();
 
-        // Draw headlands (very faint cyan)
-        plan.headlands.forEach(h => {
-            const coords = h.geometry.coordinates.map(c => [c[1], c[0]] as [number, number]);
-            L.polyline(coords, {
-                color: "#00e5ff",
-                weight: 1.2,
-                opacity: 0.3,
-                dashArray: "6, 8",
-            }).addTo(routeLayerRef.current!);
+        // Reduce lawn polygon fill when route is shown
+        lawnLayerRef.current?.eachLayer((layer) => {
+            if ((layer as L.Polygon).setStyle) {
+                (layer as L.Polygon).setStyle({ fillOpacity: 0.03 });
+            }
         });
 
-        // Draw stripes (thin, transparent — satellite shows through)
+        // Draw stripes — white/cyan for clear contrast on satellite
         plan.stripes.forEach((s, i) => {
             const coords = s.geometry.coordinates.map(c => [c[1], c[0]] as [number, number]);
             L.polyline(coords, {
-                color: i % 2 === 0 ? "#aaff00" : "#77cc00",
-                weight: 1.5,
-                opacity: 0.45,
+                color: i % 2 === 0 ? "#ffffff" : "#80e0ff",
+                weight: 1.8,
+                opacity: 0.6,
             }).addTo(routeLayerRef.current!);
         });
 
@@ -260,22 +256,16 @@ export default function LawnMap({
             // Only connect if they're close (same zone)
             const dist = Math.hypot(endPt[0] - startPt[0], endPt[1] - startPt[1]);
             if (dist < 0.001) {
-                // Simple dashed connector line
-                L.polyline(
-                    [[endPt[1], endPt[0]], [startPt[1], startPt[0]]],
-                    { color: "#aaff00", weight: 0.8, opacity: 0.2, dashArray: "2, 4" }
-                ).addTo(routeLayerRef.current!);
-
                 // Small directional arrow at midpoint
                 const midLat = (endPt[1] + startPt[1]) / 2;
                 const midLon = (endPt[0] + startPt[0]) / 2;
                 const angleDeg = Math.atan2(startPt[1] - endPt[1], startPt[0] - endPt[0]) * 180 / Math.PI;
 
                 const arrowIcon = L.divIcon({
-                    html: `<div style="transform:rotate(${angleDeg - 90}deg);color:#aaff00;font-size:8px;opacity:0.5;line-height:1">▲</div>`,
+                    html: `<div style="transform:rotate(${angleDeg - 90}deg);color:#80e0ff;font-size:7px;opacity:0.4;line-height:1">▲</div>`,
                     className: "",
-                    iconSize: [8, 8],
-                    iconAnchor: [4, 4],
+                    iconSize: [7, 7],
+                    iconAnchor: [3, 3],
                 });
                 L.marker([midLat, midLon], { icon: arrowIcon, interactive: false })
                     .addTo(routeLayerRef.current!);
