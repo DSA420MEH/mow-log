@@ -47,3 +47,5 @@ tsconfig.tsbuildinfo
 
 # design mockups
 mow log stitch mochup/
+
+.vercel
