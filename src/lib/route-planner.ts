@@ -435,6 +435,9 @@ export function planMowingRoute(
     let globalBestAngle = 0;
 
     // 2. Process each cell independently
+    // Build full mowable polygon for final stripe clipping
+    const mowablePoly = buildMowablePolygon(lawnPolygon, obstacles);
+
     for (let c = 0; c < cells.length; c++) {
         const cell = cells[c];
         const cellArea = turf.area(cell);
@@ -447,8 +450,35 @@ export function planMowingRoute(
 
         if (!inner) continue;
 
-        // Find best angle for THIS cell
-        const { angle, stripes } = findBestAngle(inner, cfg);
+        // Expand cell boundary slightly for inter-cell overlap
+        // This ensures no unmowed strips at zone boundaries
+        const overlapBuffer = cfg.deckWidthMeters * 0.6;
+        let stripeRegion: Feature<Polygon> = inner;
+        try {
+            const expanded = turf.buffer(inner, overlapBuffer, { units: "meters" });
+            if (expanded && expanded.geometry.type === "Polygon") {
+                // Clip expanded region to the lawn boundary (don't spill outside)
+                const clipped = turf.intersect(turf.featureCollection([expanded as Feature<Polygon>, lawnPolygon]));
+                if (clipped && clipped.geometry.type === "Polygon") {
+                    stripeRegion = clipped as Feature<Polygon>;
+                }
+            }
+        } catch { /* fall back to original inner */ }
+
+        // Find best angle for THIS cell (using expanded region)
+        const { angle, stripes: rawStripes } = findBestAngle(stripeRegion, cfg);
+
+        // Clip stripes to mowable area (prevent overlap into obstacles)
+        const stripes: Feature<LineString>[] = [];
+        for (const stripe of rawStripes) {
+            if (mowablePoly) {
+                const clipped = clipLineToPolygon(stripe, mowablePoly);
+                stripes.push(...clipped);
+            } else {
+                stripes.push(stripe);
+            }
+        }
+
         console.log(`[Route v3] Cell ${c}: area=${cellArea.toFixed(0)}m², angle=${angle}°, stripes=${stripes.length}`);
 
         allStripes.push(...stripes);
@@ -476,4 +506,36 @@ export function planMowingRoute(
 
 export function deckWidthFromInches(inches: number): number {
     return inches * 0.0254;
+}
+
+// ────────────────────────────────────────────────────
+// Build the full mowable polygon (lawn minus obstacles)
+// Used to clip expanded stripes so they don't enter obstacles
+// ────────────────────────────────────────────────────
+function buildMowablePolygon(
+    lawn: Feature<Polygon>,
+    obstacles: Feature<Polygon>[]
+): Feature<Polygon> | null {
+    if (obstacles.length === 0) return lawn;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let result: any = lawn;
+    for (const obs of obstacles) {
+        try {
+            const diff = turf.difference(turf.featureCollection([result as Feature<Polygon>, obs]));
+            if (diff) result = diff;
+        } catch { /* skip */ }
+    }
+
+    if (result.geometry.type === "Polygon") return result as Feature<Polygon>;
+    if (result.geometry.type === "MultiPolygon") {
+        // Return largest polygon
+        let best = 0, bestArea = 0;
+        result.geometry.coordinates.forEach((ring: Position[][], idx: number) => {
+            const a = turf.area(turf.polygon(ring));
+            if (a > bestArea) { bestArea = a; best = idx; }
+        });
+        return turf.polygon(result.geometry.coordinates[best]) as Feature<Polygon>;
+    }
+    return lawn;
 }

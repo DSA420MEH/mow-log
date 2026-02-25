@@ -232,8 +232,8 @@ export default function LawnMap({
             const coords = h.geometry.coordinates.map(c => [c[1], c[0]] as [number, number]);
             L.polyline(coords, {
                 color: "#00e5ff",
-                weight: 1,
-                opacity: 0.25,
+                weight: 1.2,
+                opacity: 0.3,
                 dashArray: "6, 8",
             }).addTo(routeLayerRef.current!);
         });
@@ -243,8 +243,8 @@ export default function LawnMap({
             const coords = s.geometry.coordinates.map(c => [c[1], c[0]] as [number, number]);
             L.polyline(coords, {
                 color: i % 2 === 0 ? "#aaff00" : "#77cc00",
-                weight: 1.2,
-                opacity: 0.35,
+                weight: 1.5,
+                opacity: 0.45,
             }).addTo(routeLayerRef.current!);
         });
 
