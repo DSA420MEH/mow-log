@@ -38,8 +38,11 @@ const DEFAULT_CONFIG: MowerConfig = {
     headlandLaps: 1,
 };
 
+const MIN_STRIPE_LENGTH_M = 0.5; // Minimum stripe length — filters boundary artifacts
+
 // ────────────────────────────────────────────────────
 // CLIPPING: Get segments of a line that are INSIDE a polygon
+// Uses turf.lineSplit for robust boundary intersection
 // ────────────────────────────────────────────────────
 function clipLineToPolygon(
     line: Feature<LineString>,
@@ -49,38 +52,58 @@ function clipLineToPolygon(
     try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const boundary = turf.polygonToLine(polygon as any);
-        let intersectPts: Position[] = [];
 
+        // Split the scan line at every boundary intersection
+        let segments: Feature<LineString>[] = [];
         if (boundary.type === "Feature") {
-            intersectPts = turf.lineIntersect(line, boundary).features.map(f => f.geometry.coordinates);
+            const split = turf.lineSplit(line, boundary);
+            segments = split.features as Feature<LineString>[];
         } else if (boundary.type === "FeatureCollection") {
-            for (const feat of boundary.features) {
-                intersectPts.push(...turf.lineIntersect(line, feat).features.map(f => f.geometry.coordinates));
+            // Multi-ring polygon — split against each ring and collect
+            let working: Feature<LineString>[] = [line];
+            for (const ring of boundary.features) {
+                const next: Feature<LineString>[] = [];
+                for (const seg of working) {
+                    const split = turf.lineSplit(seg, ring as Feature<LineString>);
+                    if (split.features.length > 0) {
+                        next.push(...(split.features as Feature<LineString>[]));
+                    } else {
+                        next.push(seg);
+                    }
+                }
+                working = next;
+            }
+            segments = working;
+        }
+
+        // If no splits occurred, test if the entire line is inside
+        if (segments.length === 0) {
+            const mid = turf.midpoint(
+                turf.point(line.geometry.coordinates[0]),
+                turf.point(line.geometry.coordinates[line.geometry.coordinates.length - 1])
+            );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (turf.booleanPointInPolygon(mid, polygon as any)) {
+                segments = [line];
+            } else {
+                return results;
             }
         }
 
-        if (intersectPts.length < 2) return results;
+        // Keep only segments whose centroid lies inside the polygon
+        for (const seg of segments) {
+            const coords = seg.geometry.coordinates;
+            if (coords.length < 2) continue;
 
-        // Sort along line direction
-        const origin = line.geometry.coordinates[0];
-        const dx = line.geometry.coordinates[1][0] - origin[0];
-        const dy = line.geometry.coordinates[1][1] - origin[1];
-        intersectPts.sort((a, b) => {
-            const projA = (a[0] - origin[0]) * dx + (a[1] - origin[1]) * dy;
-            const projB = (b[0] - origin[0]) * dx + (b[1] - origin[1]) * dy;
-            return projA - projB;
-        });
-
-        // Keep segments whose midpoint is inside the polygon
-        for (let i = 0; i < intersectPts.length - 1; i++) {
-            const p1 = intersectPts[i];
-            const p2 = intersectPts[i + 1];
-            const mid: Position = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
+            const mid: Position = [
+                (coords[0][0] + coords[coords.length - 1][0]) / 2,
+                (coords[0][1] + coords[coords.length - 1][1]) / 2,
+            ];
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (turf.booleanPointInPolygon(mid, polygon as any)) {
-                const seg = turf.lineString([p1, p2]);
-                if (turf.length(seg, { units: "meters" }) >= 0.3) {
-                    results.push(seg);
+                const len = turf.length(seg, { units: "meters" });
+                if (len >= MIN_STRIPE_LENGTH_M) {
+                    results.push(turf.lineString(coords, seg.properties));
                 }
             }
         }
@@ -154,7 +177,7 @@ function stripeSingleCell(
     const sDx = Math.cos(angleRad);
     const sDy = Math.sin(angleRad);
 
-    const stripes: Feature<LineString>[] = [];
+    const rawStripes: Feature<LineString>[] = [];
 
     for (let i = Math.floor(-numLines / 2); i <= Math.ceil(numLines / 2); i++) {
         const off = i * spacing;
@@ -166,8 +189,13 @@ function stripeSingleCell(
 
         const scanLine = turf.lineString([p1, p2]);
         const clipped = clipLineToPolygon(scanLine, cell);
-        stripes.push(...clipped);
+        rawStripes.push(...clipped);
     }
+
+    // ── Smart fragment filtering ──
+    // Remove tiny artifacts near zone boundaries while preserving
+    // legitimate short stripes at tapered lawn edges
+    const stripes = filterFragments(rawStripes);
 
     // Boustrophedon: reverse every other stripe
     return stripes.map((s, idx) => {
@@ -176,6 +204,26 @@ function stripeSingleCell(
             : s.geometry.coordinates;
         return turf.lineString(coords, { type: "stripe", index: idx });
     });
+}
+
+// ────────────────────────────────────────────────────
+// FRAGMENT FILTER: Remove tiny stripe artifacts while
+// preserving legitimate short stripes at lawn edges
+// ────────────────────────────────────────────────────
+function filterFragments(
+    stripes: Feature<LineString>[]
+): Feature<LineString>[] {
+    if (stripes.length <= 2) return stripes;
+
+    const lengths = stripes.map(s => turf.length(s, { units: "meters" }));
+    const sorted = [...lengths].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+
+    // Keep stripes that are at least 10% of the median length,
+    // OR at least 1 meter (to preserve legitimate short edge stripes)
+    const threshold = Math.min(median * 0.1, 1.0);
+
+    return stripes.filter((_, i) => lengths[i] >= threshold);
 }
 
 // ────────────────────────────────────────────────────

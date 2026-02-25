@@ -227,61 +227,58 @@ export default function LawnMap({
 
         routeLayerRef.current.clearLayers();
 
-        // Draw headlands (faint cyan, thin)
+        // Draw headlands (very faint cyan)
         plan.headlands.forEach(h => {
             const coords = h.geometry.coordinates.map(c => [c[1], c[0]] as [number, number]);
             L.polyline(coords, {
                 color: "#00e5ff",
-                weight: 1.5,
-                opacity: 0.4,
-                dashArray: "8, 6",
+                weight: 1,
+                opacity: 0.25,
+                dashArray: "6, 8",
             }).addTo(routeLayerRef.current!);
         });
 
-        // Draw stripes (thin, semi-transparent, alternating shades)
+        // Draw stripes (thin, transparent — satellite shows through)
         plan.stripes.forEach((s, i) => {
             const coords = s.geometry.coordinates.map(c => [c[1], c[0]] as [number, number]);
             L.polyline(coords, {
                 color: i % 2 === 0 ? "#aaff00" : "#77cc00",
-                weight: 2,
-                opacity: 0.55,
+                weight: 1.2,
+                opacity: 0.35,
             }).addTo(routeLayerRef.current!);
         });
 
-        // Draw subtle U-turn connectors between consecutive stripes
+        // Draw directional connectors between consecutive stripes
         for (let i = 0; i < plan.stripes.length - 1; i++) {
             const curr = plan.stripes[i].geometry.coordinates;
             const next = plan.stripes[i + 1].geometry.coordinates;
             if (curr.length < 2 || next.length < 2) continue;
 
-            // End of current stripe → start of next stripe
             const endPt = curr[curr.length - 1];
             const startPt = next[0];
 
             // Only connect if they're close (same zone)
             const dist = Math.hypot(endPt[0] - startPt[0], endPt[1] - startPt[1]);
-            if (dist < 0.001) { // ~100m threshold in degrees
-                // Create a small curved connector
-                const midLon = (endPt[0] + startPt[0]) / 2;
+            if (dist < 0.001) {
+                // Simple dashed connector line
+                L.polyline(
+                    [[endPt[1], endPt[0]], [startPt[1], startPt[0]]],
+                    { color: "#aaff00", weight: 0.8, opacity: 0.2, dashArray: "2, 4" }
+                ).addTo(routeLayerRef.current!);
+
+                // Small directional arrow at midpoint
                 const midLat = (endPt[1] + startPt[1]) / 2;
-                // Offset the midpoint slightly outward for curvature
-                const perpLon = -(startPt[1] - endPt[1]) * 0.3;
-                const perpLat = (startPt[0] - endPt[0]) * 0.3;
-                const ctrlPt: [number, number] = [midLat + perpLat, midLon + perpLon];
+                const midLon = (endPt[0] + startPt[0]) / 2;
+                const angleDeg = Math.atan2(startPt[1] - endPt[1], startPt[0] - endPt[0]) * 180 / Math.PI;
 
-                const arc: [number, number][] = [];
-                for (let t = 0; t <= 1; t += 0.2) {
-                    const lat = (1 - t) * (1 - t) * endPt[1] + 2 * (1 - t) * t * ctrlPt[0] + t * t * startPt[1];
-                    const lon = (1 - t) * (1 - t) * endPt[0] + 2 * (1 - t) * t * ctrlPt[1] + t * t * startPt[0];
-                    arc.push([lat, lon]);
-                }
-
-                L.polyline(arc, {
-                    color: "#aaff00",
-                    weight: 1,
-                    opacity: 0.3,
-                    dashArray: "3, 3",
-                }).addTo(routeLayerRef.current!);
+                const arrowIcon = L.divIcon({
+                    html: `<div style="transform:rotate(${angleDeg - 90}deg);color:#aaff00;font-size:8px;opacity:0.5;line-height:1">▲</div>`,
+                    className: "",
+                    iconSize: [8, 8],
+                    iconAnchor: [4, 4],
+                });
+                L.marker([midLat, midLon], { icon: arrowIcon, interactive: false })
+                    .addTo(routeLayerRef.current!);
             }
         }
 
