@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MapPin, BarChart2, ClipboardList, CalendarDays } from "lucide-react";
+import { MapPin, BarChart2, ClipboardList, CalendarDays, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
     { name: "Addresses", href: "/addresses", icon: MapPin },
     { name: "Stats", href: "/stats", icon: BarChart2 },
+    { name: "Route", href: "/route-planner", icon: Navigation },
     { name: "Logs", href: "/logs", icon: ClipboardList },
     { name: "Calendar", href: "/calendar", icon: CalendarDays },
 ];
