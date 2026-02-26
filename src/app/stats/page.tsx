@@ -2,6 +2,7 @@
 "use client";
 
 import { useStore, type Client, type Session } from "@/lib/store";
+import { computeClientProfit } from "@/lib/selectors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Timer, Banknote, Fuel, Wrench, Briefcase, TrendingUp, TrendingDown,
@@ -102,8 +103,9 @@ function Sparkline({ data, color = "#aaff00" }: { data: { v: number }[]; color?:
 
 // ── Client Row component ────────────────────────
 function ClientRow({ client, stats, rank }: {
-    client: Client; stats: ReturnType<typeof computeClientStats>; rank: number
+    client: Client; stats: ReturnType<typeof computeClientStats> & { profit: number }; rank: number
 }) {
+    const isPositive = stats.profit >= 0;
     return (
         <div className="flex items-center gap-3 py-3 border-b border-white/5 last:border-0">
             <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -117,8 +119,8 @@ function ClientRow({ client, stats, rank }: {
             </div>
             <div className="text-right flex-shrink-0">
                 <p className="font-bold text-sm text-primary">{fmtMoney(stats.revenue)}</p>
-                <p className="text-[11px] text-muted-foreground">
-                    {stats.hourlyRate > 0 ? fmtMoney(stats.hourlyRate) + "/hr" : "–"}
+                <p className={`text-[11px] font-bold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {isPositive ? '+' : ''}{fmtMoney(stats.profit)} profit
                 </p>
             </div>
         </div>
@@ -197,11 +199,15 @@ export default function StatsPage() {
         });
         const monthlyData = Object.entries(monthlyRev).map(([name, amount]) => ({ name, amount }));
 
-        // Per-client stats
-        const clientStats = clients.map(c => ({
-            client: c,
-            stats: computeClientStats(c, sessions),
-        })).sort((a, b) => b.stats.revenue - a.stats.revenue);
+        // Per-client stats with profit
+        const clientStats = clients.map(c => {
+            const baseStats = computeClientStats(c, sessions);
+            const profitData = computeClientProfit(c.id);
+            return {
+                client: c,
+                stats: { ...baseStats, profit: profitData.profit },
+            };
+        }).sort((a, b) => b.stats.revenue - a.stats.revenue);
 
         // Gas sparkline
         const gasSparkline = gasLogs.slice(-10).map(g => ({ v: g.total }));

@@ -1,9 +1,10 @@
 "use client";
 
 import { useStore } from "@/lib/store";
+import { getSeedData } from "@/lib/seed-data";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Settings, Download, Upload } from "lucide-react";
+import { Settings, Download, Upload, Database, Trash2 } from "lucide-react";
 
 export function SettingsModal() {
     const store = useStore();
@@ -14,6 +15,7 @@ export function SettingsModal() {
             sessions: store.sessions,
             gasLogs: store.gasLogs,
             maintenanceLogs: store.maintenanceLogs,
+            equipment: store.equipment,
         }, null, 2);
 
         const blob = new Blob([data], { type: "application/json" });
@@ -39,6 +41,7 @@ export function SettingsModal() {
                         sessions: data.sessions,
                         gasLogs: data.gasLogs || [],
                         maintenanceLogs: data.maintenanceLogs || [],
+                        equipment: data.equipment || [],
                     });
                     alert("Data imported successfully!");
                 }
@@ -47,6 +50,40 @@ export function SettingsModal() {
             }
         };
         reader.readAsText(file);
+    };
+
+    const handleLoadDemo = () => {
+        if (!confirm("Load demo data? This will replace all current data with sample clients, sessions, and logs.")) return;
+        const seed = getSeedData();
+        useStore.setState({
+            clients: seed.clients,
+            sessions: seed.sessions,
+            gasLogs: seed.gasLogs,
+            maintenanceLogs: seed.maintenanceLogs,
+            equipment: seed.equipment,
+            homeAddress: seed.homeAddress,
+            homeLat: seed.homeLat,
+            homeLng: seed.homeLng,
+            laborRate: seed.laborRate,
+            fuelCostPerKm: seed.fuelCostPerKm,
+            activeWorkdaySessionId: null,
+            activeMowSessionId: null,
+        });
+        alert("Demo data loaded! 🎉 10 clients with sessions, logs, and equipment ready.");
+    };
+
+    const handleClearAll = () => {
+        if (!confirm("⚠️ This will permanently delete ALL your data. Are you sure?")) return;
+        useStore.setState({
+            clients: [],
+            sessions: [],
+            gasLogs: [],
+            maintenanceLogs: [],
+            equipment: [],
+            activeWorkdaySessionId: null,
+            activeMowSessionId: null,
+        });
+        alert("All data cleared.");
     };
 
     return (
@@ -69,6 +106,16 @@ export function SettingsModal() {
                             <Upload className="w-4 h-4 mr-3" /> Import Data Backup
                         </Button>
                     </div>
+
+                    <div className="pt-2 border-t border-white/10 space-y-3">
+                        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">Developer Tools</p>
+                        <Button onClick={handleLoadDemo} variant="outline" className="w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 justify-start">
+                            <Database className="w-4 h-4 mr-3" /> Load Demo Data (10 Clients)
+                        </Button>
+                        <Button onClick={handleClearAll} variant="outline" className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 justify-start">
+                            <Trash2 className="w-4 h-4 mr-3" /> Clear All Data
+                        </Button>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
@@ -77,3 +124,4 @@ export function SettingsModal() {
 
 // Ensure Input is defined locally or exported from UI since it's just a file input. 
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) { return <input {...props} /> }
+

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { MapPin, Navigation, Home, Route, ExternalLink } from "lucide-react";
+import { MapPin, Navigation, Home, Route, ExternalLink, Fuel } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { optimizeRoute, type OptimizedRoute } from "@/lib/route-optimizer";
 import { useState, useCallback } from "react";
@@ -20,7 +20,7 @@ const LawnMap = dynamic(() => import("@/components/LawnMap"), {
 });
 
 export default function RoutePlannerPage() {
-    const { clients, homeAddress, homeLat, homeLng, setHomeAddress } = useStore();
+    const { clients, homeAddress, homeLat, homeLng, setHomeAddress, fuelCostPerKm } = useStore();
     const clientsWithCoords = clients.filter(c => c.lat && c.lng);
 
     const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
@@ -68,7 +68,7 @@ export default function RoutePlannerPage() {
                 lng: c.lng!,
             }));
 
-        const result = optimizeRoute(homeLat, homeLng, selected);
+        const result = optimizeRoute(homeLat, homeLng, selected, fuelCostPerKm);
         setOptimizedRoute(result);
     };
 
@@ -147,13 +147,13 @@ export default function RoutePlannerPage() {
                                             key={client.id}
                                             onClick={() => toggleClient(client.id)}
                                             className={`w-full px-3 py-2.5 rounded-lg text-left text-sm flex items-center gap-3 transition-all ${selectedClientIds.has(client.id)
-                                                    ? "bg-primary/15 border border-primary/30 text-white"
-                                                    : "bg-white/[0.03] border border-white/5 text-muted-foreground hover:border-white/15"
+                                                ? "bg-primary/15 border border-primary/30 text-white"
+                                                : "bg-white/[0.03] border border-white/5 text-muted-foreground hover:border-white/15"
                                                 }`}
                                         >
                                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center text-xs ${selectedClientIds.has(client.id)
-                                                    ? "border-primary bg-primary text-black font-bold"
-                                                    : "border-white/20"
+                                                ? "border-primary bg-primary text-black font-bold"
+                                                : "border-white/20"
                                                 }`}>
                                                 {selectedClientIds.has(client.id) && "✓"}
                                             </div>
@@ -186,6 +186,18 @@ export default function RoutePlannerPage() {
                                     </span>
                                     <span className="text-xs text-muted-foreground">
                                         ~{optimizedRoute.totalDistanceKm.toFixed(1)} km total drive
+                                    </span>
+                                </div>
+
+                                {/* Fuel Cost Estimate */}
+                                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-sm">
+                                    <Fuel className="w-4 h-4 text-orange-400 shrink-0" />
+                                    <div className="flex-1">
+                                        <span className="text-orange-400 font-bold">${optimizedRoute.estimatedFuelCost.toFixed(2)}</span>
+                                        <span className="text-muted-foreground"> est. fuel cost</span>
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground">
+                                        ~{optimizedRoute.estimatedFuelLiters.toFixed(1)}L
                                     </span>
                                 </div>
 

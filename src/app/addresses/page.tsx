@@ -2,10 +2,11 @@
 "use client";
 
 import { useStore, BillingType } from "@/lib/store";
+import { useClientProfit, useEquipmentAlerts, type ClientProfitData } from "@/lib/selectors";
 import { AddAddressForm } from "@/components/AddAddressForm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Pencil, Timer, ListTodo, Plus, Search, Route } from "lucide-react";
+import { MapPin, Pencil, Timer, ListTodo, Plus, Search, Route, TrendingUp, TrendingDown, AlertTriangle, DollarSign } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SettingsModal } from "@/components/SettingsModal";
@@ -35,6 +36,52 @@ const getInitials = (name: string) => {
         .toUpperCase()
         .substring(0, 2);
 };
+
+// Profit badge shown on each client card — calls useClientProfit hook
+function ClientProfitBadge({ clientId }: { clientId: string }) {
+    const profit = useClientProfit(clientId);
+    if (profit.revenue === 0 && profit.profit === 0) return null;
+
+    const isPositive = profit.profit >= 0;
+    const fmtMoney = (n: number) => (n < 0 ? "-$" : "$") + Math.abs(n).toFixed(0);
+
+    return (
+        <div className={cn(
+            "flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold",
+            isPositive ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
+        )}>
+            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            {fmtMoney(profit.profit)}
+        </div>
+    );
+}
+
+// Equipment alerts banner
+function EquipmentAlertBanner() {
+    const alerts = useEquipmentAlerts();
+    if (alerts.length === 0) return null;
+
+    const overdueCount = alerts.filter(a => a.isOverdue).length;
+
+    return (
+        <div className={cn(
+            "mb-6 px-4 py-3 rounded-xl border flex items-center gap-3",
+            overdueCount > 0
+                ? "bg-red-500/10 border-red-500/30"
+                : "bg-orange-500/10 border-orange-500/30"
+        )}>
+            <AlertTriangle className={cn("w-5 h-5 flex-shrink-0", overdueCount > 0 ? "text-red-400" : "text-orange-400")} />
+            <div className="flex-1 min-w-0">
+                <p className={cn("text-sm font-bold", overdueCount > 0 ? "text-red-400" : "text-orange-400")}>
+                    {overdueCount > 0 ? `${overdueCount} Overdue` : 'Upcoming'} Maintenance
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                    {alerts[0].equipmentName}: {alerts[0].serviceName} ({alerts[0].hoursSinceService.toFixed(1)}h / {alerts[0].intervalHours}h)
+                </p>
+            </div>
+        </div>
+    );
+}
 
 export default function AddressesPage() {
     const { clients, sessions, startMowSession, endMowSession, activeMowSessionId } = useStore();
@@ -160,6 +207,8 @@ export default function AddressesPage() {
                 </button>
             </div>
 
+            <EquipmentAlertBanner />
+
             {displayClients.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-primary/20 rounded-2xl bg-[#151a17]/50 glass-card">
                     <MapPin className="w-12 h-12 text-primary/40 mb-4" />
@@ -233,6 +282,14 @@ export default function AddressesPage() {
                                     <button className="text-muted-foreground hover:text-white transition-colors">
                                         <Pencil className="w-4 h-4" />
                                     </button>
+                                </div>
+
+                                {/* Profit Badge */}
+                                <div className="flex items-center gap-2 mb-3">
+                                    <ClientProfitBadge clientId={client.id} />
+                                    <span className="text-[11px] text-muted-foreground">
+                                        {client.billingType === 'Regular' ? `$${client.amount}/mo` : `$${client.amount}/cut`}
+                                    </span>
                                 </div>
 
                                 {isActiveMowing && activeSession && (

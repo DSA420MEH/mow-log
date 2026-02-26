@@ -53,11 +53,28 @@ export interface MaintenanceLog {
     totalCost: number;
 }
 
+export interface ServiceInterval {
+    id: string;
+    name: string;            // "Blade Sharpening"
+    intervalHours: number;   // Every 25 hours
+    lastServiceHours: number;
+    lastServiceDate: string;
+}
+
+export interface Equipment {
+    id: string;
+    name: string;            // "Honda HRX217"
+    type: 'mower' | 'trimmer' | 'blower' | 'other';
+    currentHours: number;
+    serviceIntervals: ServiceInterval[];
+}
+
 interface AppState {
     clients: Client[];
     sessions: Session[];
     gasLogs: GasLog[];
     maintenanceLogs: MaintenanceLog[];
+    equipment: Equipment[];
 
     activeWorkdaySessionId: string | null;
     activeMowSessionId: string | null;
@@ -66,6 +83,10 @@ interface AppState {
     homeAddress: string;
     homeLat?: number;
     homeLng?: number;
+
+    // Business config
+    laborRate: number;       // $/hr — for profit calculations
+    fuelCostPerKm: number;   // $/km — for route fuel estimates
 
     // Actions
     addClient: (client: Omit<Client, 'id' | 'createdAt'>) => void;
@@ -87,6 +108,15 @@ interface AppState {
     // Route features
     saveClientRoute: (clientId: string, screenshot: string, lat: number, lng: number) => void;
     setHomeAddress: (address: string, lat: number, lng: number) => void;
+
+    // Business config
+    setLaborRate: (rate: number) => void;
+    setFuelCostPerKm: (rate: number) => void;
+
+    // Equipment tracking
+    addEquipment: (eq: Omit<Equipment, 'id' | 'currentHours'>) => void;
+    markServiceDone: (equipmentId: string, serviceId: string) => void;
+    deleteEquipment: (id: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -96,9 +126,12 @@ export const useStore = create<AppState>()(
             sessions: [],
             gasLogs: [],
             maintenanceLogs: [],
+            equipment: [],
             activeWorkdaySessionId: null,
             activeMowSessionId: null,
             homeAddress: '',
+            laborRate: 25,
+            fuelCostPerKm: 0.15,
 
             addClient: (client) =>
                 set((state) => ({
@@ -246,6 +279,15 @@ export const useStore = create<AppState>()(
                             };
                         }),
                         activeMowSessionId: null,
+                        // Auto-increment equipment hours for mowers
+                        equipment: state.equipment.map((e) => {
+                            if (e.type !== 'mower') return e;
+                            const sess = state.sessions.find((s) => s.id === state.activeMowSessionId);
+                            if (!sess) return e;
+                            const durSec = (new Date(now).getTime() - new Date(sess.startTime).getTime()) / 1000;
+                            const netSec = durSec - (sess.breakTimeTotal || 0) - (sess.stuckTimeTotal || 0);
+                            return { ...e, currentHours: e.currentHours + Math.max(0, netSec / 3600) };
+                        }),
                     };
                 }),
 
@@ -317,6 +359,40 @@ export const useStore = create<AppState>()(
 
             setHomeAddress: (address, lat, lng) =>
                 set(() => ({ homeAddress: address, homeLat: lat, homeLng: lng })),
+
+            // Business config
+            setLaborRate: (rate) => set(() => ({ laborRate: rate })),
+            setFuelCostPerKm: (rate) => set(() => ({ fuelCostPerKm: rate })),
+
+            // Equipment tracking
+            addEquipment: (eq) =>
+                set((state) => ({
+                    equipment: [
+                        ...state.equipment,
+                        { ...eq, id: crypto.randomUUID(), currentHours: 0 },
+                    ],
+                })),
+
+            markServiceDone: (equipmentId, serviceId) =>
+                set((state) => ({
+                    equipment: state.equipment.map((e) =>
+                        e.id === equipmentId
+                            ? {
+                                ...e,
+                                serviceIntervals: e.serviceIntervals.map((si) =>
+                                    si.id === serviceId
+                                        ? { ...si, lastServiceHours: e.currentHours, lastServiceDate: new Date().toISOString() }
+                                        : si
+                                ),
+                            }
+                            : e
+                    ),
+                })),
+
+            deleteEquipment: (id) =>
+                set((state) => ({
+                    equipment: state.equipment.filter((e) => e.id !== id),
+                })),
         }),
         {
             name: 'mow-log-storage',

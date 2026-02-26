@@ -20,6 +20,8 @@ export interface RouteStop {
 export interface OptimizedRoute {
     stops: RouteStop[];
     totalDistanceKm: number;
+    estimatedFuelCost: number;   // totalDistanceKm × fuelCostPerKm
+    estimatedFuelLiters: number; // based on ~8L/100km avg truck consumption
     googleMapsUrl: string;
 }
 
@@ -39,13 +41,17 @@ function haversineKm(
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Average fuel consumption: 8L per 100km (reasonable truck/van estimate)
+const FUEL_CONSUMPTION_L_PER_KM = 0.08;
+
 export function optimizeRoute(
     homeLat: number,
     homeLng: number,
-    clients: { clientId: string; name: string; address: string; lat: number; lng: number }[]
+    clients: { clientId: string; name: string; address: string; lat: number; lng: number }[],
+    fuelCostPerKm: number = 0.15
 ): OptimizedRoute {
     if (clients.length === 0) {
-        return { stops: [], totalDistanceKm: 0, googleMapsUrl: "" };
+        return { stops: [], totalDistanceKm: 0, estimatedFuelCost: 0, estimatedFuelLiters: 0, googleMapsUrl: "" };
     }
 
     // Nearest-neighbor TSP
@@ -96,5 +102,9 @@ export function optimizeRoute(
     const waypoints = stops.map(s => `${s.lat},${s.lng}`).join("/");
     const googleMapsUrl = `https://www.google.com/maps/dir/${homeLat},${homeLng}/${waypoints}/${homeLat},${homeLng}`;
 
-    return { stops, totalDistanceKm: totalDist, googleMapsUrl };
+    // Fuel estimates
+    const estimatedFuelCost = totalDist * fuelCostPerKm;
+    const estimatedFuelLiters = totalDist * FUEL_CONSUMPTION_L_PER_KM;
+
+    return { stops, totalDistanceKm: totalDist, estimatedFuelCost, estimatedFuelLiters, googleMapsUrl };
 }
