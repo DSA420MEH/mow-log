@@ -7,6 +7,7 @@
  */
 
 import { useStore, type Client, type Session } from './store';
+import { useShallow } from 'zustand/shallow';
 
 // ── Helpers ──────────────────────────────────────
 
@@ -70,7 +71,7 @@ export function computeClientProfit(clientId: string): ClientProfitData {
 // ── Hook version for components ──────────────────
 
 export function useClientProfit(clientId: string): ClientProfitData {
-    return useStore((state) => {
+    return useStore(useShallow((state) => {
         const client = state.clients.find((c) => c.id === clientId);
         if (!client) return { revenue: 0, allocatedGas: 0, allocatedMaint: 0, profit: 0, profitMargin: 0, hourlyRate: 0 };
 
@@ -95,7 +96,7 @@ export function useClientProfit(clientId: string): ClientProfitData {
         const hourlyRate = clientMowSec > 0 ? profit / (clientMowSec / 3600) : 0;
 
         return { revenue, allocatedGas, allocatedMaint, profit, profitMargin, hourlyRate };
-    });
+    }));
 }
 
 // ── Client Summary (for addresses page) ──────────
@@ -110,9 +111,7 @@ export interface ClientSummary {
 }
 
 export function useClientSummary(clientId: string): ClientSummary {
-    const profit = useClientProfit(clientId);
-
-    return useStore((state) => {
+    return useStore(useShallow((state) => {
         const mows = state.sessions.filter(
             (s) => s.type === 'address-mow' && s.clientId === clientId && s.status === 'completed' && s.endTime
         );
@@ -126,8 +125,11 @@ export function useClientSummary(clientId: string): ClientSummary {
             ? Math.floor((Date.now() - new Date(lastMowDate).getTime()) / (1000 * 60 * 60 * 24))
             : null;
 
+        // Inline profit computation to avoid calling another hook
+        const profit = computeClientProfit(clientId);
+
         return { visits: mows.length, totalMowSec, avgMowSec, lastMowDate, daysSinceLastMow, profit };
-    });
+    }));
 }
 
 // ── Daily Profit (for logs page) ─────────────────
@@ -142,7 +144,7 @@ export interface DailyProfit {
 }
 
 export function useDailyProfit(dateStr: string): DailyProfit {
-    return useStore((state) => {
+    return useStore(useShallow((state) => {
         const { clients, sessions, gasLogs, maintenanceLogs } = state;
 
         const dayMows = sessions.filter(
@@ -180,7 +182,7 @@ export function useDailyProfit(dateStr: string): DailyProfit {
         const profit = revenue - gasCost - maintCost;
 
         return { date: dateStr, revenue, gasCost, maintCost, profit, sessionsCount: dayMows.length };
-    });
+    }));
 }
 
 // ── Equipment Alerts ─────────────────────────────
@@ -197,7 +199,7 @@ export interface EquipmentAlert {
 }
 
 export function useEquipmentAlerts(): EquipmentAlert[] {
-    return useStore((state) => {
+    return useStore(useShallow((state) => {
         const alerts: EquipmentAlert[] = [];
         state.equipment.forEach((eq) => {
             eq.serviceIntervals.forEach((si) => {
@@ -218,5 +220,5 @@ export function useEquipmentAlerts(): EquipmentAlert[] {
             });
         });
         return alerts.sort((a, b) => b.urgencyPercent - a.urgencyPercent);
-    });
+    }));
 }
