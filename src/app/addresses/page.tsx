@@ -2,12 +2,12 @@
 "use client";
 
 import { useStore, BillingType } from "@/lib/store";
-import { useClientProfit, useEquipmentAlerts, type ClientProfitData } from "@/lib/selectors";
+import { computeClientProfit, computeEquipmentAlerts, type ClientProfitData } from "@/lib/selectors";
 import { AddAddressForm } from "@/components/AddAddressForm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Pencil, Timer, ListTodo, Plus, Search, Route, TrendingUp, TrendingDown, AlertTriangle, DollarSign } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SettingsModal } from "@/components/SettingsModal";
 import { cn } from "@/lib/utils";
@@ -37,9 +37,10 @@ const getInitials = (name: string) => {
         .substring(0, 2);
 };
 
-// Profit badge shown on each client card — calls useClientProfit hook
+// Profit badge shown on each client card
 function ClientProfitBadge({ clientId }: { clientId: string }) {
-    const profit = useClientProfit(clientId);
+    const { sessions, clients, gasLogs, maintenanceLogs } = useStore();
+    const profit = useMemo(() => computeClientProfit(clientId), [clientId, sessions, clients, gasLogs, maintenanceLogs]);
     if (profit.revenue === 0 && profit.profit === 0) return null;
 
     const isPositive = profit.profit >= 0;
@@ -58,7 +59,8 @@ function ClientProfitBadge({ clientId }: { clientId: string }) {
 
 // Equipment alerts banner
 function EquipmentAlertBanner() {
-    const alerts = useEquipmentAlerts();
+    const equipment = useStore((s) => s.equipment);
+    const alerts = useMemo(() => computeEquipmentAlerts(), [equipment]);
     if (alerts.length === 0) return null;
 
     const overdueCount = alerts.filter(a => a.isOverdue).length;

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useStore, type Equipment } from "@/lib/store";
-import { useDailyProfit, useEquipmentAlerts } from "@/lib/selectors";
+import { computeDailyProfit, computeEquipmentAlerts } from "@/lib/selectors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,11 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Clock, Fuel, Wrench, Play, Square, Pause, Plus, Scan, Trash2, TrendingUp, TrendingDown, DollarSign, Settings2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useMemo } from "react";
 
 // Daily profit summary component
 function DailyProfitCard() {
     const today = new Date().toISOString().slice(0, 10);
-    const daily = useDailyProfit(today);
+    const { clients, sessions, gasLogs, maintenanceLogs } = useStore();
+    const daily = useMemo(() => computeDailyProfit(today), [today, clients, sessions, gasLogs, maintenanceLogs]);
 
     if (daily.sessionsCount === 0 && daily.gasCost === 0) return null;
 
@@ -340,7 +342,7 @@ export default function LogsPage() {
 
 function EquipmentSection() {
     const { equipment, addEquipment, markServiceDone, deleteEquipment } = useStore();
-    const alerts = useEquipmentAlerts();
+    const alerts = useMemo(() => computeEquipmentAlerts(), [equipment]);
     const [eqOpen, setEqOpen] = useState(false);
     const [eqName, setEqName] = useState("");
     const [eqType, setEqType] = useState<Equipment['type']>('mower');
