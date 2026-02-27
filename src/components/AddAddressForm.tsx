@@ -23,6 +23,8 @@ export function AddAddressForm({ customTrigger }: { customTrigger?: React.ReactN
 
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
+    const [email, setEmail] = useState("");
+    const [contractLength, setContractLength] = useState("");
     const [notes, setNotes] = useState("");
 
     const [billingType, setBillingType] = useState<BillingType>("PerCut");
@@ -33,6 +35,8 @@ export function AddAddressForm({ customTrigger }: { customTrigger?: React.ReactN
             name,
             address: `${address}, ${city} ${zip}`,
             phone,
+            email,
+            contractLength,
             sqft,
             billingType,
             amount: parseFloat(amount) || 0,
@@ -136,6 +140,16 @@ export function AddAddressForm({ customTrigger }: { customTrigger?: React.ReactN
                             <div className="space-y-2">
                                 <Label htmlFor="phone">Phone Number</Label>
                                 <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-input/50 border-white/10" placeholder="(555) 123-4567" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Email</Label>
+                                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-input/50 border-white/10" placeholder="john@example.com" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="contract">Contract</Label>
+                                    <Input id="contract" value={contractLength} onChange={(e) => setContractLength(e.target.value)} className="bg-input/50 border-white/10" placeholder="6 Months" />
+                                </div>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="notes">Notes/Instructions</Label>
