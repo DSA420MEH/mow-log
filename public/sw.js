@@ -1,5 +1,5 @@
-const CACHE_NAME = "html-cache-v2";
-const STATIC_ASSETS_CACHE = "static-assets-v2";
+const CACHE_NAME = "html-cache-v3";
+const STATIC_ASSETS_CACHE = "static-assets-v3";
 const CACHE_WHITELIST = [CACHE_NAME, STATIC_ASSETS_CACHE];
 const TTL = 10 * 60 * 1000; // 10 minutes
 const OFFLINE_URL = "/offline.html";

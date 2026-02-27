@@ -55,6 +55,15 @@ export default function RootLayout({
               <ActiveMowBanner />
               <BottomNav />
             </div>
+            <script dangerouslySetInnerHTML={{
+              __html: `
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                  console.log('[PWA] New version detected, reloading...');
+                  window.location.reload();
+                });
+              }
+            ` }} />
           </PWAProvider>
         )}
       </body>
