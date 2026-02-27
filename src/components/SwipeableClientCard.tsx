@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash } from "lucide-react";
+import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +54,7 @@ interface SwipeableClientCardProps {
     avatarStyle: { bg: string; text: string };
     onStartMowing: () => void;
     onCompleteMowing: () => void;
+    onEdit?: () => void;
     InlineMowTimer: React.ComponentType<{
         startTime: string;
         breakTimeTotal?: number;
@@ -112,6 +113,7 @@ export function SwipeableClientCard({
     avatarStyle,
     onStartMowing,
     onCompleteMowing,
+    onEdit,
     InlineMowTimer,
 }: SwipeableClientCardProps) {
     const [activePanel, setActivePanel] = useState(0);
@@ -192,7 +194,10 @@ export function SwipeableClientCard({
                         </button>
                     ))}
                 </div>
-                <button className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white transition-all">
+                <button
+                    onClick={onEdit}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white transition-all"
+                >
                     <Pencil className="w-3.5 h-3.5" />
                 </button>
             </div>
@@ -217,21 +222,29 @@ export function SwipeableClientCard({
                     </div>
                 </div>
 
-                {/* Profit Badge */}
-                {showProfit && (
-                    <div className="flex items-center gap-2 mt-3">
+                {/* Profit & Rate Badge */}
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {showProfit && (
                         <div className={cn(
-                            "flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold",
-                            isPositive ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black tracking-tight",
+                            isPositive ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" : "bg-red-500/15 text-red-400 border border-red-500/20"
                         )}>
-                            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                            {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                             {fmtMoney(profit.profit)}
                         </div>
-                        <span className="text-[11px] text-muted-foreground">
+                    )}
+
+                    {client.amount > 0 ? (
+                        <span className="text-[11px] font-bold text-white/40 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
                             {client.billingType === "Regular" ? `$${client.amount}/mo` : `$${client.amount}/cut`}
                         </span>
-                    </div>
-                )}
+                    ) : (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.1)]">
+                            <AlertTriangle className="w-3 h-3" />
+                            RATE MISSING
+                        </div>
+                    )}
+                </div>
 
                 {/* Active Mowing Timer */}
                 {isActiveMowing && activeSession && (
@@ -272,6 +285,7 @@ export function SwipeableClientCard({
 
                         <div className="grid grid-cols-2 gap-2.5">
                             <Metric label="Visits" value={stats.totalVisits} icon={Hash} />
+                            <Metric label="Lifetime" value={`$${profit.revenue.toFixed(0)}`} icon={DollarSign} colorClass="text-emerald-400/60" />
                             <Metric label="Total Work" value={stats.totalTimeStr} icon={Clock} />
                             <Metric label="Efficiency" value={stats.avgTime} icon={Zap} colorClass="text-blue-400/60" />
                             <Metric
@@ -341,9 +355,16 @@ export function SwipeableClientCard({
 
                         {/* Client Details Grid */}
                         <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
-                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center">
+                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center relative group/phone">
                                 <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Phone</span>
-                                <span className="text-gray-100 font-bold text-sm tracking-tight">{client.phone || "—"}</span>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-100 font-bold text-sm tracking-tight">{client.phone || "—"}</span>
+                                    {client.phone && (
+                                        <a href={`tel:${client.phone}`} className="ml-2 w-7 h-7 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-black transition-all">
+                                            <Phone className="w-3 h-3" />
+                                        </a>
+                                    )}
+                                </div>
                             </div>
                             <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center overflow-hidden">
                                 <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Lot Size</span>

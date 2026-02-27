@@ -1,9 +1,9 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useStore, BillingType } from "@/lib/store";
+import { useStore, BillingType, Client } from "@/lib/store";
 import { computeClientProfit, computeEquipmentAlerts } from "@/lib/selectors";
-import { AddAddressForm } from "@/components/AddAddressForm";
+import { ClientForm } from "@/components/ClientForm";
 import { Button } from "@/components/ui/button";
 import { SwipeableClientCard } from "@/components/SwipeableClientCard";
 import { MapPin, Timer, ListTodo, Plus, AlertTriangle } from "lucide-react";
@@ -93,6 +93,7 @@ export default function AddressesPage() {
 
     const [isMounted, setIsMounted] = useState(false);
     const [activeTab, setActiveTab] = useState<BillingType | 'All'>('Regular');
+    const [editingClient, setEditingClient] = useState<Client | null>(null);
 
     useEffect(() => {
         setIsMounted(true);
@@ -189,7 +190,7 @@ export default function AddressesPage() {
 
                 <div className="flex items-center gap-2">
                     <SettingsModal />
-                    <AddAddressForm
+                    <ClientForm
                         customTrigger={
                             <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-[0_0_15px_rgba(170,255,0,0.15)] transition-all">
                                 <Plus className="w-5 h-5 mr-2" /> Add New Address
@@ -198,6 +199,13 @@ export default function AddressesPage() {
                     />
                 </div>
             </div>
+
+            {/* Global Edit Form (triggered via state) */}
+            <ClientForm
+                initialData={editingClient || undefined}
+                open={!!editingClient}
+                onOpenChange={(open) => !open && setEditingClient(null)}
+            />
 
             <div className="flex items-center gap-2 mb-8 bg-[#151a17] w-fit p-1 rounded-xl glass-card border border-white/5">
                 <button
@@ -266,6 +274,7 @@ export default function AddressesPage() {
                                 avatarStyle={avatarStyle}
                                 onStartMowing={() => handleStartMowing(client.id)}
                                 onCompleteMowing={handleCompleteMowing}
+                                onEdit={() => setEditingClient(client)}
                                 InlineMowTimer={InlineMowTimer}
                             />
                         );
