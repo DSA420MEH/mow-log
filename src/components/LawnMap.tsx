@@ -215,7 +215,7 @@ export default function LawnMap({
             if (geocodioKey) {
                 // Use Geocod.io for rooftop precision
                 const res = await fetch(
-                    `https://api.geocod.io/v1.7/geocode?q=${encodeURIComponent(address)}&api_key=${geocodioKey}&format=simple`
+                    `https://api.geocod.io/v1.7/geocode?q=${encodeURIComponent(address)}&api_key=${geocodioKey}&format=simple&country=Canada`
                 );
 
                 const data = await res.json();
