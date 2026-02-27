@@ -65,19 +65,34 @@ interface SwipeableClientCardProps {
 // ── Swipe Dot Indicator ────────────────────────────────────────────────────────
 function SwipeDots({ count, active }: { count: number; active: number }) {
     return (
-        <div className="flex items-center justify-center gap-2 py-2.5">
+        <div className="flex items-center justify-center gap-2 pb-3 pt-1">
             {Array.from({ length: count }).map((_, i) => (
-                <button
+                <div
                     key={i}
-                    aria-label={`Go to panel ${i + 1}`}
                     className={cn(
-                        "rounded-full transition-all duration-300",
+                        "rounded-full transition-all duration-500",
                         i === active
-                            ? "w-6 h-2 bg-primary shadow-[0_0_8px_rgba(170,255,0,0.4)]"
-                            : "w-2 h-2 bg-white/20 hover:bg-white/30"
+                            ? "w-8 h-1.5 bg-primary shadow-[0_0_12px_rgba(170,255,0,0.6)] active-dot"
+                            : "w-1.5 h-1.5 bg-white/10"
                     )}
                 />
             ))}
+        </div>
+    );
+}
+
+// ── Metric Card ────────────────────────────────────────────────────────────────
+function Metric({ label, value, icon: Icon, colorClass = "text-primary/60" }: { label: string; value: string | number; icon: any; colorClass?: string }) {
+    return (
+        <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5 flex flex-col group hover:bg-white/[0.05] transition-colors relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Icon className="w-8 h-8" />
+            </div>
+            <div className="flex items-center gap-1.5 mb-1 relative z-10">
+                <Icon className={cn("w-3 h-3", colorClass)} />
+                <span className={cn("text-[9px] font-bold tracking-[0.1em] uppercase opacity-70", colorClass)}>{label}</span>
+            </div>
+            <span className="text-lg font-bold text-white relative z-10 tracking-tight">{value}</span>
         </div>
     );
 }
@@ -158,24 +173,24 @@ export function SwipeableClientCard({
             )}
 
             {/* Panel label tab */}
-            <div className="flex items-center justify-between px-4 pt-3 pb-1">
-                <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between px-4 pt-4 pb-1 z-30">
+                <div className="flex items-center gap-2 p-1 bg-black/20 rounded-lg backdrop-blur-md border border-white/5">
                     {PANEL_LABELS.map((label, i) => (
                         <button
                             key={label}
                             onClick={() => setActivePanel(i)}
                             className={cn(
-                                "text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md transition-all duration-200",
+                                "text-[9px] font-black uppercase tracking-[0.15em] px-3 py-1.5 rounded-md transition-all duration-300",
                                 i === activePanel
-                                    ? "text-primary bg-primary/10"
-                                    : "text-muted-foreground/50 hover:text-muted-foreground"
+                                    ? "text-primary bg-primary/20 shadow-[inset_0_0_10px_rgba(170,255,0,0.1)]"
+                                    : "text-white/30 hover:text-white/60"
                             )}
                         >
                             {label}
                         </button>
                     ))}
                 </div>
-                <button className="text-muted-foreground hover:text-white transition-colors">
+                <button className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white transition-all">
                     <Pencil className="w-3.5 h-3.5" />
                 </button>
             </div>
@@ -247,14 +262,14 @@ export function SwipeableClientCard({
                         )}
 
                         {/* Quick Stats Row */}
-                        <div className="grid grid-cols-2 gap-px bg-white/5 rounded-xl overflow-hidden mb-3 border border-white/5 text-sm">
-                            <div className="bg-[#151a17] p-2.5 flex flex-col justify-center">
-                                <span className="text-[10px] text-primary/70 font-bold tracking-wider mb-0.5 uppercase">Phone</span>
-                                <span className="text-gray-200 font-medium text-sm">{client.phone || "N/A"}</span>
+                        <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center">
+                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Client Phone</span>
+                                <span className="text-gray-100 font-bold text-sm tracking-tight">{client.phone || "No Phone"}</span>
                             </div>
-                            <div className="bg-[#151a17] p-2.5 flex flex-col justify-center overflow-hidden">
-                                <span className="text-[10px] text-primary/70 font-bold tracking-wider mb-0.5 uppercase">Size</span>
-                                <span className="text-gray-200 font-medium text-sm truncate">{client.sqft}</span>
+                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center overflow-hidden">
+                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Lot Scale</span>
+                                <span className="text-gray-100 font-bold text-sm truncate tracking-tight">{client.sqft || "Unknown"}</span>
                             </div>
                         </div>
 
@@ -297,62 +312,18 @@ export function SwipeableClientCard({
                             <span className="text-[10px] text-muted-foreground ml-auto">{client.name}</span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                            {/* Visits */}
-                            <div className="bg-[#151a17] rounded-xl p-3 border border-white/5 flex flex-col">
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <Hash className="w-3 h-3 text-primary/60" />
-                                    <span className="text-[10px] text-primary/70 font-bold tracking-wider uppercase">Visits</span>
-                                </div>
-                                <span className="text-xl font-bold text-white">{stats.totalVisits}</span>
-                            </div>
-
-                            {/* Total Time */}
-                            <div className="bg-[#151a17] rounded-xl p-3 border border-white/5 flex flex-col">
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <Clock className="w-3 h-3 text-primary/60" />
-                                    <span className="text-[10px] text-primary/70 font-bold tracking-wider uppercase">Total Time</span>
-                                </div>
-                                <span className="text-base font-bold text-white">{stats.totalTimeStr}</span>
-                            </div>
-
-                            {/* Avg Time */}
-                            <div className="bg-[#151a17] rounded-xl p-3 border border-white/5 flex flex-col">
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <Timer className="w-3 h-3 text-blue-400/60" />
-                                    <span className="text-[10px] text-blue-400/70 font-bold tracking-wider uppercase">Avg Time</span>
-                                </div>
-                                <span className="text-base font-bold text-blue-300">{stats.avgTime}</span>
-                            </div>
-
-                            {/* Days Since */}
-                            <div className="bg-[#151a17] rounded-xl p-3 border border-white/5 flex flex-col">
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <Calendar className="w-3 h-3 text-amber-400/60" />
-                                    <span className="text-[10px] text-amber-400/70 font-bold tracking-wider uppercase">Last Visit</span>
-                                </div>
-                                <span className={cn("text-base font-bold", stats.daysSinceNum > 10 ? "text-rose-400" : stats.daysSinceNum > 5 ? "text-amber-400" : "text-white")}>
-                                    {stats.daysSince}
-                                </span>
-                            </div>
-
-                            {/* Stuck Time */}
-                            <div className="bg-[#151a17] rounded-xl p-3 border border-white/5 flex flex-col">
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <Zap className="w-3 h-3 text-rose-400/60" />
-                                    <span className="text-[10px] text-rose-400/70 font-bold tracking-wider uppercase">Stuck Time</span>
-                                </div>
-                                <span className="text-base font-bold text-rose-400">{stats.totalStuckStr}</span>
-                            </div>
-
-                            {/* Pause Time */}
-                            <div className="bg-[#151a17] rounded-xl p-3 border border-white/5 flex flex-col">
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <PauseCircle className="w-3 h-3 text-gray-400/60" />
-                                    <span className="text-[10px] text-gray-400/70 font-bold tracking-wider uppercase">Pause Time</span>
-                                </div>
-                                <span className="text-base font-bold text-gray-400">{stats.totalBreakStr}</span>
-                            </div>
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <Metric label="Visits" value={stats.totalVisits} icon={Hash} />
+                            <Metric label="Total Work" value={stats.totalTimeStr} icon={Clock} />
+                            <Metric label="Efficiency" value={stats.avgTime} icon={Zap} colorClass="text-blue-400/60" />
+                            <Metric
+                                label="Recency"
+                                value={stats.daysSince}
+                                icon={Calendar}
+                                colorClass={stats.daysSinceNum > 10 ? "text-rose-400/60" : stats.daysSinceNum > 5 ? "text-amber-400/60" : "text-emerald-400/60"}
+                            />
+                            <Metric label="Stuck" value={stats.totalStuckStr} icon={Zap} colorClass="text-rose-400/60" />
+                            <Metric label="Paused" value={stats.totalBreakStr} icon={PauseCircle} colorClass="text-gray-400/60" />
                         </div>
 
                         {/* Revenue / Profit Summary */}
@@ -382,31 +353,42 @@ export function SwipeableClientCard({
                         </div>
 
                         {client.routeScreenshot && client.routeScreenshot.startsWith("data:image") ? (
-                            <div className="rounded-xl overflow-hidden border border-white/10 bg-white/[0.02]">
+                            <div className="rounded-xl overflow-hidden border border-white/10 bg-white/[0.02] shadow-2xl">
                                 <img
                                     src={client.routeScreenshot}
                                     alt={`Route for ${client.name}`}
                                     className="w-full h-auto object-contain"
                                 />
                             </div>
-                        ) : client.lat && client.lng ? (
-                            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-6 flex flex-col items-center justify-center text-center min-h-[160px]">
-                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                                    <Route className="w-6 h-6 text-primary/50" />
-                                </div>
-                                <p className="text-sm text-muted-foreground mb-1">No saved route screenshot</p>
-                                <p className="text-[10px] text-muted-foreground/60">Visit the Route Planner to create and save a route</p>
-                                <p className="text-[10px] text-primary/50 mt-2">
-                                    📍 {client.lat.toFixed(4)}, {client.lng.toFixed(4)}
-                                </p>
-                            </div>
                         ) : (
-                            <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-6 flex flex-col items-center justify-center text-center min-h-[160px]">
-                                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
-                                    <MapPin className="w-6 h-6 text-muted-foreground/30" />
+                            <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black group min-h-[220px]">
+                                <img
+                                    src="/lawn-placeholder.png"
+                                    alt="Lawn View"
+                                    className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#1a201c] via-[#1a201c]/40 to-transparent" />
+
+                                <div className="absolute bottom-4 left-4 right-4 flex flex-col">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center backdrop-blur-md">
+                                            <Route className="w-4 h-4 text-primary" />
+                                        </div>
+                                        <span className="text-xs font-bold text-white tracking-wide">Target Route Overlay</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-300 leading-relaxed mb-3">
+                                        No active route overlay detected. Synchronize with satellite mapping to view property boundaries.
+                                    </p>
+                                    <Button variant="outline" size="sm" className="w-fit text-[10px] h-7 border-primary/30 text-primary hover:bg-primary/10">
+                                        Initialize Route Map
+                                    </Button>
                                 </div>
-                                <p className="text-sm text-muted-foreground mb-1">No location data</p>
-                                <p className="text-[10px] text-muted-foreground/60">Add coordinates to this client to enable route planning</p>
+
+                                {client.lat && client.lng && (
+                                    <div className="absolute top-4 right-4 px-2 py-1 rounded bg-black/60 backdrop-blur-md border border-white/5 text-[9px] font-mono text-white/70">
+                                        {client.lat.toFixed(4)}, {client.lng.toFixed(4)}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
