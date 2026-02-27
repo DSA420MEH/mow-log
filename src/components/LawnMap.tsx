@@ -210,13 +210,48 @@ export default function LawnMap({
         if (!address.trim() || !mapRef.current) return;
         setSearching(true);
         try {
-            const res = await fetch(
-                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
-            );
-            const data = await res.json();
-            if (data.length > 0) {
-                const { lat, lon } = data[0];
-                mapRef.current.setView([parseFloat(lat), parseFloat(lon)], 19);
+            const geocodioKey = process.env.NEXT_PUBLIC_GEOCODIO_API_KEY;
+
+            if (geocodioKey) {
+                // Use Geocod.io for rooftop precision
+                const res = await fetch(
+                    `https://api.geocod.io/v1.7/geocode?q=${encodeURIComponent(address)}&api_key=${geocodioKey}&format=simple`
+                );
+
+                const data = await res.json();
+
+                if (data.lat && data.lng) {
+                    // GeoCod.io format=simple directly returns lat, lng, and accuracy_type
+                    const isPrecise = data.accuracy_type === "rooftop" || data.accuracy_type === "point";
+                    const zoomLevel = isPrecise ? 20 : 18;
+
+                    mapRef.current.setView([data.lat, data.lng], zoomLevel);
+                } else {
+                    console.warn("Geocod.io did not return coordinates:", data);
+                }
+            } else {
+                // Fallback to OSM Nominatim
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=5&addressdetails=1&countrycodes=ca`
+                );
+                const data = await res.json();
+                if (data.length > 0) {
+                    // Try to find a building or specific house number first
+                    const bestMatch = data.find((item: any) =>
+                        item.type === "house" ||
+                        item.type === "residential" ||
+                        item.type === "building" ||
+                        item.class === "building"
+                    ) || data[0];
+
+                    const { lat, lon } = bestMatch;
+
+                    // If it's just a street (highway) we stay slightly zoomed out
+                    const isPrecise = bestMatch.class === "building" || bestMatch.type === "house";
+                    const zoomLevel = isPrecise ? 20 : 18;
+
+                    mapRef.current.setView([parseFloat(lat), parseFloat(lon)], zoomLevel);
+                }
             }
         } catch (err) {
             console.error("Geocoding failed:", err);
