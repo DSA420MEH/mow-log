@@ -1,0 +1,586 @@
+{
+  "appVersion": "MowLog_v1.6",
+  "exportedAt": "2025-09-09T11:52:26.851Z",
+  "addresses": [
+    {
+      "id": "a569006b-669c-4e3c-88b9-01bff9a608bd",
+      "address": "7 white birch",
+      "notes": "",
+      "clientName": "rands pamela",
+      "clientPhone": "",
+      "paymentAmount": "25",
+      "mowType": "per-cut",
+      "sessions": [
+        {
+          "id": "a71c95d1-be2d-4fa7-9db7-b62edef3d5a8",
+          "startTime": 1752949786658,
+          "endTime": 1752950280000,
+          "duration": 493342,
+          "payment": 25
+        }
+      ],
+      "totalTime": 493342,
+      "createdAt": 1752949782138,
+      "lawnSize": ""
+    },
+    {
+      "id": "30694879-913e-49fd-aa2a-1e8c9118e727",
+      "address": "80 southpine",
+      "notes": "",
+      "clientName": "",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "8718fa76-0dd0-48dd-b7f1-84ee1831ef98",
+          "startTime": 1755715630003,
+          "endTime": 1755716701159,
+          "duration": 1071156
+        },
+        {
+          "id": "fd7ffad9-e9b0-4f1c-8dea-6ca7a41c5992",
+          "startTime": 1755002967781,
+          "endTime": 1755003347724,
+          "duration": 379943
+        },
+        {
+          "id": "c812adea-8040-4dde-b4e7-7dfb35930229",
+          "startTime": 1753881373191,
+          "endTime": 1753882503774,
+          "duration": 1130583
+        },
+        {
+          "id": "281ca526-dca8-46c3-8a35-325e9097e0e2",
+          "startTime": 1752176048726,
+          "endTime": 1752178072692,
+          "duration": 2023966
+        },
+        {
+          "id": "c7f449b0-a93e-477e-b69a-a1a3ad0da7cd",
+          "startTime": 1751476952958,
+          "endTime": 1751477988339,
+          "duration": 1035381
+        }
+      ],
+      "totalTime": 5641029,
+      "createdAt": 1751476950713,
+      "lawnSize": ""
+    },
+    {
+      "id": "af33c2a0-da0a-4091-9f9f-17716dc3b69a",
+      "address": "2 rivera",
+      "notes": "",
+      "clientName": "nicole",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "per-cut",
+      "sessions": [
+        {
+          "id": "3dc36573-37c3-4b8f-8a84-132880047c30",
+          "startTime": 1756057378019,
+          "endTime": 1756058227074,
+          "duration": 849055,
+          "payment": 30
+        },
+        {
+          "id": "46b22745-8758-44ca-9d60-2c42b948be9b",
+          "startTime": 1754572711309,
+          "endTime": 1754573894030,
+          "duration": 1182721,
+          "payment": 30
+        },
+        {
+          "id": "d370f53b-5ff5-436b-98fd-2294f70dccaa",
+          "startTime": 1751482439759,
+          "endTime": 1751483235534,
+          "duration": 795775,
+          "payment": 30
+        }
+      ],
+      "totalTime": 2827551,
+      "createdAt": 1751476063305,
+      "lawnSize": ""
+    },
+    {
+      "id": "bd55514e-2a97-4403-a062-44c40f31a9c1",
+      "address": "8 fir",
+      "notes": "",
+      "clientName": "",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "3f8ef1af-0452-4541-9d2b-99ef45238be6",
+          "startTime": 1754577560388,
+          "endTime": 1754579100000,
+          "duration": 1539612
+        },
+        {
+          "id": "09bea828-72ce-4513-9926-206e377c4cf3",
+          "startTime": 1751483416730,
+          "endTime": 1751484157966,
+          "duration": 741236
+        }
+      ],
+      "totalTime": 2280848,
+      "createdAt": 1751476092803,
+      "lawnSize": ""
+    },
+    {
+      "id": "56e0822a-5786-49a8-87f1-205f579d5280",
+      "address": "7 montreux",
+      "notes": "",
+      "clientName": "",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "9415a5c9-abec-4b09-bacf-78edfe960aa4",
+          "startTime": 1756055563486,
+          "endTime": 1756056483158,
+          "duration": 919672
+        },
+        {
+          "id": "c8bd89fd-8cd0-4491-9a28-727eb7affd8c",
+          "startTime": 1754571662599,
+          "endTime": 1754572601292,
+          "duration": 938693
+        },
+        {
+          "id": "3127c776-56ba-4bca-88f9-adcebf55c4c8",
+          "startTime": 1753897787729,
+          "endTime": 1753898190109,
+          "duration": 402380
+        },
+        {
+          "id": "31b42e82-3c7a-4cdd-a246-c8149163aaef",
+          "startTime": 1752760703479,
+          "endTime": 1752761271831,
+          "duration": 568352
+        },
+        {
+          "id": "51175c84-3b62-441e-a33a-6d164000938b",
+          "startTime": 1752087932969,
+          "endTime": 1752088668773,
+          "duration": 735804
+        },
+        {
+          "id": "6af66882-668f-46c7-9c17-10701e81a346",
+          "startTime": 1751481536326,
+          "endTime": 1751482351039,
+          "duration": 814713
+        }
+      ],
+      "totalTime": 4379614,
+      "createdAt": 1751476026748,
+      "lawnSize": ""
+    },
+    {
+      "id": "58037ad3-c37d-423a-b653-708f9bde37f8",
+      "address": "3 valbella",
+      "notes": "",
+      "clientName": "",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "e56a61b5-f0eb-47fa-bf4f-618099d9ffbc",
+          "startTime": 1756056516676,
+          "endTime": 1756057260622,
+          "duration": 743946
+        },
+        {
+          "id": "dc72ca9c-38f5-4411-8a7c-a96d42e0eace",
+          "startTime": 1754570977665,
+          "endTime": 1754571644550,
+          "duration": 666885
+        },
+        {
+          "id": "e1c15247-f199-4284-aea5-78ef6b13e63d",
+          "startTime": 1752087315260,
+          "endTime": 1752087885639,
+          "duration": 570379
+        },
+        {
+          "id": "65c4f002-a0ea-46b2-9582-d271d41f9e43",
+          "startTime": 1751480872843,
+          "endTime": 1751481510094,
+          "duration": 637251
+        }
+      ],
+      "totalTime": 2618461,
+      "createdAt": 1751476000420,
+      "lawnSize": ""
+    },
+    {
+      "id": "c3a9dd65-e470-46b7-a5b6-da3df0ec62fe",
+      "address": "23 Zurich",
+      "notes": "",
+      "clientName": "",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "47a56206-21dd-45f5-b6b8-eee8c4bf7293",
+          "startTime": 1754573964215,
+          "endTime": 1754575500000,
+          "duration": 1535785
+        },
+        {
+          "id": "11a1847c-412f-41db-bd02-d9a69a601a59",
+          "startTime": 1752088913496,
+          "endTime": 1752090411769,
+          "duration": 1498273
+        }
+      ],
+      "totalTime": 3034058,
+      "createdAt": 1752088910573,
+      "lawnSize": ""
+    },
+    {
+      "id": "0483f063-5c00-4f62-bcb6-41d3958823bc",
+      "address": "5 corino",
+      "notes": "",
+      "clientName": "",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "3d9a661e-e0f7-4d9a-a298-809310467799",
+          "startTime": 1756054375189,
+          "endTime": 1756055436091,
+          "duration": 1060902
+        },
+        {
+          "id": "e46fb848-75b3-4d5b-a243-d9130f568da6",
+          "startTime": 1754570099053,
+          "endTime": 1754570889000,
+          "duration": 789947
+        },
+        {
+          "id": "217882b6-2f22-4c57-ada6-5c618ebf4ef3",
+          "startTime": 1753896959680,
+          "endTime": 1753897782261,
+          "duration": 822581
+        },
+        {
+          "id": "48776edd-b7cd-4fed-8702-9dffe7f1f85c",
+          "startTime": 1752759991855,
+          "endTime": 1752760626005,
+          "duration": 634150
+        },
+        {
+          "id": "2533d89f-2f03-4b64-9cbd-8eacc16cf699",
+          "startTime": 1752086475546,
+          "endTime": 1752087156298,
+          "duration": 680752
+        },
+        {
+          "id": "31621839-2a4f-476d-b13e-1b18afd69296",
+          "startTime": 1751480647113,
+          "endTime": 1751480844924,
+          "duration": 197811
+        }
+      ],
+      "totalTime": 4186143,
+      "createdAt": 1751475972956,
+      "lawnSize": ""
+    },
+    {
+      "id": "74419184-5b00-4a8a-b2f9-c94a8b51801c",
+      "address": "4 overlea",
+      "notes": "",
+      "clientName": "",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "395928df-77d7-47da-8a48-861d8c75de81",
+          "startTime": 1756494118550,
+          "endTime": 1756495001870,
+          "duration": 883320
+        },
+        {
+          "id": "b9d1776f-f2d6-4895-ac34-a6420d930009",
+          "startTime": 1755716914628,
+          "endTime": 1755717562948,
+          "duration": 648320
+        },
+        {
+          "id": "802b084b-854b-4a1b-99ee-e988bcbe3d06",
+          "startTime": 1755004674565,
+          "endTime": 1755005563565,
+          "duration": 889000
+        },
+        {
+          "id": "9822f2af-b231-412c-aab4-82264d6d14b4",
+          "startTime": 1753883700000,
+          "endTime": 1753884480000,
+          "duration": 780000
+        },
+        {
+          "id": "3990f9cc-ff1a-4066-bc57-0c62e5bac003",
+          "startTime": 1752759187974,
+          "endTime": 1752759621692,
+          "duration": 433718
+        },
+        {
+          "id": "c53549f3-762f-4a1a-a855-b3686074f0ed",
+          "startTime": 1752173964162,
+          "endTime": 1752174759460,
+          "duration": 795298
+        },
+        {
+          "id": "505b4eac-efdc-435e-a87f-6b5c734190a9",
+          "startTime": 1751479026695,
+          "endTime": 1751479800796,
+          "duration": 774101
+        }
+      ],
+      "totalTime": 5203757,
+      "createdAt": 1751475934331,
+      "lawnSize": ""
+    },
+    {
+      "id": "1eea1b2f-9b81-442e-810f-e97af8a7d4c3",
+      "address": "91 southpine",
+      "notes": "",
+      "clientName": "",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "2c612161-4bb4-4bf6-9638-5f82277d2838",
+          "startTime": 1756493005491,
+          "endTime": 1756494068615,
+          "duration": 1063124
+        },
+        {
+          "id": "df06c6ec-f44f-40a9-aa8c-7429cf9d7481",
+          "startTime": 1755003466575,
+          "endTime": 1755004609372,
+          "duration": 1142797
+        },
+        {
+          "id": "f903e996-2c55-444a-be56-64cb69bb0a5b",
+          "startTime": 1753882666834,
+          "endTime": 1753883580000,
+          "duration": 913166
+        },
+        {
+          "id": "dee1b588-768b-4bf9-b91a-016a97b429c2",
+          "startTime": 1752174839392,
+          "endTime": 1752175912395,
+          "duration": 1073003
+        },
+        {
+          "id": "b062c41e-2811-4e40-951a-4c9d169cbd6b",
+          "startTime": 1751478087028,
+          "endTime": 1751478970561,
+          "duration": 883533
+        }
+      ],
+      "totalTime": 5075623,
+      "createdAt": 1751475910004,
+      "lawnSize": ""
+    },
+    {
+      "id": "af6ffaad-f3fd-455a-be3a-a84ad7dcaf6f",
+      "address": "3 aspenwood street",
+      "notes": "",
+      "clientName": "Shawn sim",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "30341116-1b57-4562-bb0c-0c27813b52ce",
+          "startTime": 1756492220269,
+          "endTime": 1756492803515,
+          "duration": 583246
+        },
+        {
+          "id": "17fb3060-8241-4ec0-a625-276a037c1bd4",
+          "startTime": 1755002097391,
+          "endTime": 1755002864060,
+          "duration": 766669
+        },
+        {
+          "id": "71ea7cdb-ba4a-44c4-8f2f-a450ea0cdf75",
+          "startTime": 1753880552585,
+          "endTime": 1753881270329,
+          "duration": 717744
+        },
+        {
+          "id": "fcd774fd-2b89-4b28-ad5c-f10a9c90b25c",
+          "startTime": 1752757991293,
+          "endTime": 1752758624501,
+          "duration": 633208
+        },
+        {
+          "id": "2dbe87f7-b92a-436f-b4ae-e98fa7d278df",
+          "startTime": 1751476326284,
+          "endTime": 1751476877283,
+          "duration": 550999
+        }
+      ],
+      "totalTime": 3251866,
+      "createdAt": 1751475870897,
+      "lawnSize": ""
+    },
+    {
+      "id": "5e51982c-0af9-4c49-ad73-007e6a2c6708",
+      "address": "55 cedargrove",
+      "notes": "",
+      "clientName": "",
+      "clientPhone": "",
+      "paymentAmount": "",
+      "mowType": "regular",
+      "sessions": [
+        {
+          "id": "950bbe13-6d51-4639-a7b8-4ca08ea9d77a",
+          "startTime": 1753886940000,
+          "endTime": 1753888500000,
+          "duration": 1560000
+        },
+        {
+          "id": "f0d987a0-84b9-4abe-9022-94a4283bc4e0",
+          "startTime": 1752092119824,
+          "endTime": 1752093698538,
+          "duration": 1578714
+        },
+        {
+          "id": "63f66756-4e21-40be-9273-d392628ff2fe",
+          "startTime": 1751403308388,
+          "endTime": 1751403310486,
+          "duration": 2098
+        }
+      ],
+      "totalTime": 3140812,
+      "createdAt": 1751403304486,
+      "lawnSize": ""
+    }
+  ],
+  "gasFillUps": [
+    {
+      "id": "7afd01b0-30fd-4016-8717-59b44bce3bf6",
+      "timestamp": 1755349214988,
+      "liters": 6.09,
+      "price": 8.8
+    },
+    {
+      "id": "55a48f8f-57dd-4c14-8b45-c2fbdd54f4af",
+      "timestamp": 1754577143872,
+      "liters": 6.31,
+      "price": 9.07
+    },
+    {
+      "id": "ce5ba44b-eb1a-484a-afaf-64e250421747",
+      "timestamp": 1752763111778,
+      "liters": 9.22,
+      "price": 13.05
+    },
+    {
+      "id": "fd4b54ef-6c23-41c2-9a32-c8fc50ba3aaa",
+      "timestamp": 1752090809783,
+      "liters": 3.89,
+      "price": 5.4
+    },
+    {
+      "id": "b917c4ff-e4d5-4b15-a6e9-d4a2a0f123cb",
+      "timestamp": 1751484467456,
+      "liters": 6.65,
+      "price": 9.62
+    }
+  ],
+  "maintenanceLogs": [],
+  "workSessions": [
+    {
+      "id": "9b0b924d-cca5-4a88-978c-3a4861197611",
+      "startTime": 1756492084650,
+      "endTime": 1756503191068,
+      "duration": 11106418
+    },
+    {
+      "id": "58a1b0a6-4ab9-4b84-8184-4453c053cdac",
+      "startTime": 1756053990806,
+      "endTime": 1756063967135,
+      "duration": 9976329
+    },
+    {
+      "id": "133a6648-8116-4da7-8baa-04a67b6df03d",
+      "startTime": 1755715553843,
+      "endTime": 1755748112949,
+      "duration": 32559106
+    },
+    {
+      "id": "f143c607-68e9-44f0-b48f-b3c7372c2d58",
+      "startTime": 1755001921780,
+      "endTime": 1755005940652,
+      "duration": 4018871
+    },
+    {
+      "id": "93b84031-21e2-4304-981d-36ff6f935277",
+      "startTime": 1754570092766,
+      "endTime": 1754579400000,
+      "duration": 9307234
+    },
+    {
+      "id": "7421aaf8-01a0-4f0f-b077-5e91a269cac5",
+      "startTime": 1753896600000,
+      "endTime": 1753901400000,
+      "duration": 4800000
+    },
+    {
+      "id": "1a9e3991-dc4e-462b-b671-53f937da84a6",
+      "startTime": 1753880396637,
+      "endTime": 1753894060265,
+      "duration": 13663628
+    },
+    {
+      "id": "81b8d8f0-9b4c-4996-83f1-8e7316cb3777",
+      "startTime": 1753294067698,
+      "endTime": 1753299000000,
+      "duration": 4932302
+    },
+    {
+      "id": "6bcf15f0-cfbc-467a-9299-f754ab21080a",
+      "startTime": 1752949570183,
+      "endTime": 1752962261850,
+      "duration": 12691667
+    },
+    {
+      "id": "a7d4b00d-713c-4f0e-8474-06fd9e03c971",
+      "startTime": 1752757786212,
+      "endTime": 1752765219090,
+      "duration": 7432878
+    },
+    {
+      "id": "c19f0654-9068-4507-91f7-b9fb50917df0",
+      "startTime": 1752173597223,
+      "endTime": 1752178097117,
+      "duration": 4499894
+    },
+    {
+      "id": "26d5ef8c-7b61-40ac-b48e-00ea716e433d",
+      "startTime": 1752086153926,
+      "endTime": 1752095101080,
+      "duration": 8947151
+    },
+    {
+      "id": "8f0f4724-edce-46bf-b338-4ec5d1a9672a",
+      "startTime": 1751476165802,
+      "endTime": 1751485511271,
+      "duration": 9345468
+    }
+  ],
+  "maintenanceSessions": []
+}

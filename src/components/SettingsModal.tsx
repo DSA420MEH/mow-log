@@ -69,7 +69,7 @@ export function SettingsModal() {
             activeWorkdaySessionId: null,
             activeMowSessionId: null,
         });
-        alert("Demo data loaded! 🎉 10 clients with sessions, logs, and equipment ready.");
+        alert("Previous season data loaded! 🌿 12 clients, 62 sessions, and your gas logs are now synchronized.");
     };
 
     const handleClearAll = () => {
@@ -108,9 +108,9 @@ export function SettingsModal() {
                     </div>
 
                     <div className="pt-2 border-t border-white/10 space-y-3">
-                        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">Developer Tools</p>
-                        <Button onClick={handleLoadDemo} variant="outline" className="w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 justify-start">
-                            <Database className="w-4 h-4 mr-3" /> Load Demo Data (10 Clients)
+                        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">Data Management</p>
+                        <Button onClick={handleLoadDemo} variant="outline" className="w-full border-primary/30 text-primary hover:bg-primary/10 justify-start">
+                            <Database className="w-4 h-4 mr-3" /> Load Previous Season Data ({store.clients.length === 0 ? "Ready" : "Overlay"})
                         </Button>
                         <Button onClick={handleClearAll} variant="outline" className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 justify-start">
                             <Trash2 className="w-4 h-4 mr-3" /> Clear All Data

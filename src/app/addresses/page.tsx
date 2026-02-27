@@ -10,6 +10,7 @@ import { MapPin, Timer, ListTodo, Plus, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { SettingsModal } from "@/components/SettingsModal";
 import { cn } from "@/lib/utils";
+import { getSeedData } from "@/lib/seed-data";
 
 // Predictable avatar colors based on string hash
 const generateAvatarStyle = (name: string) => {
@@ -95,7 +96,23 @@ export default function AddressesPage() {
 
     useEffect(() => {
         setIsMounted(true);
-    }, []);
+        // Automatically load seed data if the store is empty (first visit or after clear)
+        if (clients.length === 0) {
+            const seed = getSeedData();
+            useStore.setState({
+                clients: seed.clients,
+                sessions: seed.sessions,
+                gasLogs: seed.gasLogs,
+                maintenanceLogs: seed.maintenanceLogs,
+                equipment: seed.equipment,
+                homeAddress: seed.homeAddress,
+                homeLat: seed.homeLat,
+                homeLng: seed.homeLng,
+                laborRate: seed.laborRate,
+                fuelCostPerKm: seed.fuelCostPerKm,
+            });
+        }
+    }, [clients.length]);
 
     const regularClients = clients.filter((c) => c.billingType === "Regular");
     const perCutClients = clients.filter((c) => c.billingType === "PerCut");

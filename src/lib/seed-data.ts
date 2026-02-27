@@ -1,262 +1,805 @@
-/**
- * Mock/Seed Data for Testing
- *
- * Populates the app with realistic lawn care data:
- * - 10 clients (mix of Regular & PerCut billing)
- * - ~30 completed mow sessions across the past 14 days
- * - 4 gas logs
- * - 2 maintenance events
- * - 1 mower with service intervals partly used
- * - Home address set
- */
-
-import type { Client, Session, GasLog, MaintenanceLog, Equipment } from './store';
-
-// Deterministic UUIDs for reproducibility
-const cid = (n: number) => `mock-client-${n.toString().padStart(3, '0')}`;
-const sid = (n: number) => `mock-session-${n.toString().padStart(3, '0')}`;
-
-function daysAgo(d: number, hour = 9, min = 0): string {
-    const dt = new Date();
-    dt.setDate(dt.getDate() - d);
-    dt.setHours(hour, min, 0, 0);
-    return dt.toISOString();
-}
-
-function addMinutes(iso: string, mins: number): string {
-    return new Date(new Date(iso).getTime() + mins * 60000).toISOString();
-}
-
-// ── Clients ──────────────────────────────────────
+import type { Client, Session, GasLog, MaintenanceLog, Equipment } from "./store";
 
 const mockClients: Client[] = [
-    {
-        id: cid(1), name: 'Garcia Family', address: '142 Palm Ave, Orlando, FL',
-        phone: '407-555-0101', sqft: '4500', billingType: 'Regular', amount: 180,
-        notes: 'Large backyard with pool area', createdAt: daysAgo(60),
-        lat: 28.5383, lng: -81.3792,
-    },
-    {
-        id: cid(2), name: 'Johnson Residence', address: '88 Magnolia Dr, Orlando, FL',
-        phone: '407-555-0102', sqft: '3200', billingType: 'PerCut', amount: 45,
-        notes: 'Weekly service preferred', createdAt: daysAgo(55),
-        lat: 28.5421, lng: -81.3756,
-    },
-    {
-        id: cid(3), name: 'The Patels', address: '210 Lake Shore Blvd, Orlando, FL',
-        phone: '407-555-0103', sqft: '5800', billingType: 'Regular', amount: 250,
-        notes: 'Corner lot, extra edging needed', createdAt: daysAgo(50),
-        lat: 28.5350, lng: -81.3830,
-    },
-    {
-        id: cid(4), name: 'Williams Estate', address: '77 Oak Trail, Winter Park, FL',
-        phone: '407-555-0104', sqft: '7200', billingType: 'Regular', amount: 320,
-        notes: 'High-end property. Be careful with flower beds.', createdAt: daysAgo(45),
-        lat: 28.5990, lng: -81.3393,
-    },
-    {
-        id: cid(5), name: 'Chen House', address: '305 Cypress Ct, Orlando, FL',
-        phone: '407-555-0105', sqft: '2800', billingType: 'PerCut', amount: 35,
-        notes: 'Small front yard only', createdAt: daysAgo(42),
-        lat: 28.5310, lng: -81.3880,
-    },
-    {
-        id: cid(6), name: 'Martinez Property', address: '19 Sunset Ridge, Kissimmee, FL',
-        phone: '407-555-0106', sqft: '4000', billingType: 'PerCut', amount: 50,
-        notes: 'Bi-weekly schedule', createdAt: daysAgo(38),
-        lat: 28.2920, lng: -81.4076,
-    },
-    {
-        id: cid(7), name: 'Thompson Duplex', address: '456 Pine Hill Rd, Orlando, FL',
-        phone: '407-555-0107', sqft: '3600', billingType: 'Regular', amount: 200,
-        notes: 'Both units, front and back', createdAt: daysAgo(35),
-        lat: 28.5455, lng: -81.3680,
-    },
-    {
-        id: cid(8), name: 'Rivera Bungalow', address: '823 Hibiscus Ln, Orlando, FL',
-        phone: '407-555-0108', sqft: '2400', billingType: 'PerCut', amount: 30,
-        notes: 'Watch for garden gnomes', createdAt: daysAgo(30),
-        lat: 28.5290, lng: -81.3920,
-    },
-    {
-        id: cid(9), name: 'Baker Ranch', address: '1100 Country Club Dr, Windermere, FL',
-        phone: '407-555-0109', sqft: '9000', billingType: 'Regular', amount: 400,
-        notes: 'Largest property — budget 90 min', createdAt: daysAgo(28),
-        lat: 28.4945, lng: -81.5338,
-    },
-    {
-        id: cid(10), name: 'Nguyen Townhome', address: '62 Jasmine Way, Orlando, FL',
-        phone: '407-555-0110', sqft: '1800', billingType: 'PerCut', amount: 28,
-        notes: 'Quick job, mostly front', createdAt: daysAgo(25),
-        lat: 28.5405, lng: -81.3715,
-    },
+  {
+    "id": "a569006b-669c-4e3c-88b9-01bff9a608bd",
+    "name": "rands pamela",
+    "address": "7 white birch",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "PerCut",
+    "amount": 25,
+    "notes": "",
+    "createdAt": "2025-07-19T18:29:42.138Z"
+  },
+  {
+    "id": "30694879-913e-49fd-aa2a-1e8c9118e727",
+    "name": "80 southpine",
+    "address": "80 southpine",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-02T17:22:30.713Z"
+  },
+  {
+    "id": "af33c2a0-da0a-4091-9f9f-17716dc3b69a",
+    "name": "nicole",
+    "address": "2 rivera",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "PerCut",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-02T17:07:43.305Z"
+  },
+  {
+    "id": "bd55514e-2a97-4403-a062-44c40f31a9c1",
+    "name": "8 fir",
+    "address": "8 fir",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-02T17:08:12.803Z"
+  },
+  {
+    "id": "56e0822a-5786-49a8-87f1-205f579d5280",
+    "name": "7 montreux",
+    "address": "7 montreux",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-02T17:07:06.748Z"
+  },
+  {
+    "id": "58037ad3-c37d-423a-b653-708f9bde37f8",
+    "name": "3 valbella",
+    "address": "3 valbella",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-02T17:06:40.420Z"
+  },
+  {
+    "id": "c3a9dd65-e470-46b7-a5b6-da3df0ec62fe",
+    "name": "23 Zurich",
+    "address": "23 Zurich",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-09T19:21:50.573Z"
+  },
+  {
+    "id": "0483f063-5c00-4f62-bcb6-41d3958823bc",
+    "name": "5 corino",
+    "address": "5 corino",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-02T17:06:12.956Z"
+  },
+  {
+    "id": "74419184-5b00-4a8a-b2f9-c94a8b51801c",
+    "name": "4 overlea",
+    "address": "4 overlea",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-02T17:05:34.331Z"
+  },
+  {
+    "id": "1eea1b2f-9b81-442e-810f-e97af8a7d4c3",
+    "name": "91 southpine",
+    "address": "91 southpine",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-02T17:05:10.004Z"
+  },
+  {
+    "id": "af6ffaad-f3fd-455a-be3a-a84ad7dcaf6f",
+    "name": "Shawn sim",
+    "address": "3 aspenwood street",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-02T17:04:30.897Z"
+  },
+  {
+    "id": "5e51982c-0af9-4c49-ad73-007e6a2c6708",
+    "name": "55 cedargrove",
+    "address": "55 cedargrove",
+    "phone": "",
+    "sqft": "0",
+    "billingType": "Regular",
+    "amount": 0,
+    "notes": "",
+    "createdAt": "2025-07-01T20:55:04.486Z"
+  }
 ];
-
-// ── Sessions ─────────────────────────────────────
-// Simulate ~2-4 client mows per day over the past 14 days
-
-interface SessionSeed {
-    day: number;  // days ago
-    clientIdx: number; // 1-10
-    startHour: number;
-    durationMin: number;
-    breakMin: number;
-}
-
-const sessionSeeds: SessionSeed[] = [
-    // Day 1 (yesterday)
-    { day: 1, clientIdx: 1, startHour: 8, durationMin: 55, breakMin: 5 },
-    { day: 1, clientIdx: 2, startHour: 9.5, durationMin: 35, breakMin: 0 },
-    { day: 1, clientIdx: 10, startHour: 10.5, durationMin: 22, breakMin: 0 },
-    // Day 2
-    { day: 2, clientIdx: 4, startHour: 8, durationMin: 80, breakMin: 10 },
-    { day: 2, clientIdx: 7, startHour: 10, durationMin: 45, breakMin: 5 },
-    { day: 2, clientIdx: 5, startHour: 11.5, durationMin: 25, breakMin: 0 },
-    // Day 3
-    { day: 3, clientIdx: 3, startHour: 8.5, durationMin: 65, breakMin: 5 },
-    { day: 3, clientIdx: 6, startHour: 10.5, durationMin: 50, breakMin: 5 },
-    // Day 4
-    { day: 4, clientIdx: 9, startHour: 7.5, durationMin: 95, breakMin: 15 },
-    { day: 4, clientIdx: 8, startHour: 10, durationMin: 28, breakMin: 0 },
-    // Day 5
-    { day: 5, clientIdx: 1, startHour: 8, durationMin: 50, breakMin: 5 },
-    { day: 5, clientIdx: 2, startHour: 9.5, durationMin: 38, breakMin: 0 },
-    { day: 5, clientIdx: 7, startHour: 10.5, durationMin: 42, breakMin: 5 },
-    // Day 7
-    { day: 7, clientIdx: 4, startHour: 8, durationMin: 78, breakMin: 10 },
-    { day: 7, clientIdx: 3, startHour: 10, durationMin: 60, breakMin: 5 },
-    { day: 7, clientIdx: 10, startHour: 11.5, durationMin: 20, breakMin: 0 },
-    // Day 8
-    { day: 8, clientIdx: 5, startHour: 8.5, durationMin: 30, breakMin: 0 },
-    { day: 8, clientIdx: 6, startHour: 9.5, durationMin: 48, breakMin: 5 },
-    { day: 8, clientIdx: 8, startHour: 11, durationMin: 26, breakMin: 0 },
-    // Day 10
-    { day: 10, clientIdx: 9, startHour: 7.5, durationMin: 92, breakMin: 12 },
-    { day: 10, clientIdx: 1, startHour: 10, durationMin: 52, breakMin: 5 },
-    // Day 11
-    { day: 11, clientIdx: 2, startHour: 8, durationMin: 36, breakMin: 0 },
-    { day: 11, clientIdx: 7, startHour: 9, durationMin: 44, breakMin: 5 },
-    { day: 11, clientIdx: 4, startHour: 10.5, durationMin: 75, breakMin: 8 },
-    // Day 13
-    { day: 13, clientIdx: 3, startHour: 8, durationMin: 62, breakMin: 5 },
-    { day: 13, clientIdx: 5, startHour: 9.5, durationMin: 28, breakMin: 0 },
-    { day: 13, clientIdx: 10, startHour: 10.5, durationMin: 22, breakMin: 0 },
-    { day: 13, clientIdx: 8, startHour: 11, durationMin: 25, breakMin: 0 },
-    // Day 14
-    { day: 14, clientIdx: 6, startHour: 8, durationMin: 52, breakMin: 5 },
-    { day: 14, clientIdx: 9, startHour: 9.5, durationMin: 88, breakMin: 10 },
+const mockSessions: Session[] = [
+  {
+    "id": "a71c95d1-be2d-4fa7-9db7-b62edef3d5a8",
+    "type": "address-mow",
+    "clientId": "a569006b-669c-4e3c-88b9-01bff9a608bd",
+    "startTime": "2025-07-19T18:29:46.658Z",
+    "endTime": "2025-07-19T18:38:00.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "8718fa76-0dd0-48dd-b7f1-84ee1831ef98",
+    "type": "address-mow",
+    "clientId": "30694879-913e-49fd-aa2a-1e8c9118e727",
+    "startTime": "2025-08-20T18:47:10.003Z",
+    "endTime": "2025-08-20T19:05:01.159Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "fd7ffad9-e9b0-4f1c-8dea-6ca7a41c5992",
+    "type": "address-mow",
+    "clientId": "30694879-913e-49fd-aa2a-1e8c9118e727",
+    "startTime": "2025-08-12T12:49:27.781Z",
+    "endTime": "2025-08-12T12:55:47.724Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "c812adea-8040-4dde-b4e7-7dfb35930229",
+    "type": "address-mow",
+    "clientId": "30694879-913e-49fd-aa2a-1e8c9118e727",
+    "startTime": "2025-07-30T13:16:13.191Z",
+    "endTime": "2025-07-30T13:35:03.774Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "281ca526-dca8-46c3-8a35-325e9097e0e2",
+    "type": "address-mow",
+    "clientId": "30694879-913e-49fd-aa2a-1e8c9118e727",
+    "startTime": "2025-07-10T19:34:08.726Z",
+    "endTime": "2025-07-10T20:07:52.692Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "c7f449b0-a93e-477e-b69a-a1a3ad0da7cd",
+    "type": "address-mow",
+    "clientId": "30694879-913e-49fd-aa2a-1e8c9118e727",
+    "startTime": "2025-07-02T17:22:32.958Z",
+    "endTime": "2025-07-02T17:39:48.339Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "3dc36573-37c3-4b8f-8a84-132880047c30",
+    "type": "address-mow",
+    "clientId": "af33c2a0-da0a-4091-9f9f-17716dc3b69a",
+    "startTime": "2025-08-24T17:42:58.019Z",
+    "endTime": "2025-08-24T17:57:07.074Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "46b22745-8758-44ca-9d60-2c42b948be9b",
+    "type": "address-mow",
+    "clientId": "af33c2a0-da0a-4091-9f9f-17716dc3b69a",
+    "startTime": "2025-08-07T13:18:31.309Z",
+    "endTime": "2025-08-07T13:38:14.030Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "d370f53b-5ff5-436b-98fd-2294f70dccaa",
+    "type": "address-mow",
+    "clientId": "af33c2a0-da0a-4091-9f9f-17716dc3b69a",
+    "startTime": "2025-07-02T18:53:59.759Z",
+    "endTime": "2025-07-02T19:07:15.534Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "3f8ef1af-0452-4541-9d2b-99ef45238be6",
+    "type": "address-mow",
+    "clientId": "bd55514e-2a97-4403-a062-44c40f31a9c1",
+    "startTime": "2025-08-07T14:39:20.388Z",
+    "endTime": "2025-08-07T15:05:00.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "09bea828-72ce-4513-9926-206e377c4cf3",
+    "type": "address-mow",
+    "clientId": "bd55514e-2a97-4403-a062-44c40f31a9c1",
+    "startTime": "2025-07-02T19:10:16.730Z",
+    "endTime": "2025-07-02T19:22:37.966Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "9415a5c9-abec-4b09-bacf-78edfe960aa4",
+    "type": "address-mow",
+    "clientId": "56e0822a-5786-49a8-87f1-205f579d5280",
+    "startTime": "2025-08-24T17:12:43.486Z",
+    "endTime": "2025-08-24T17:28:03.158Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "c8bd89fd-8cd0-4491-9a28-727eb7affd8c",
+    "type": "address-mow",
+    "clientId": "56e0822a-5786-49a8-87f1-205f579d5280",
+    "startTime": "2025-08-07T13:01:02.599Z",
+    "endTime": "2025-08-07T13:16:41.292Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "3127c776-56ba-4bca-88f9-adcebf55c4c8",
+    "type": "address-mow",
+    "clientId": "56e0822a-5786-49a8-87f1-205f579d5280",
+    "startTime": "2025-07-30T17:49:47.729Z",
+    "endTime": "2025-07-30T17:56:30.109Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "31b42e82-3c7a-4cdd-a246-c8149163aaef",
+    "type": "address-mow",
+    "clientId": "56e0822a-5786-49a8-87f1-205f579d5280",
+    "startTime": "2025-07-17T13:58:23.479Z",
+    "endTime": "2025-07-17T14:07:51.831Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "51175c84-3b62-441e-a33a-6d164000938b",
+    "type": "address-mow",
+    "clientId": "56e0822a-5786-49a8-87f1-205f579d5280",
+    "startTime": "2025-07-09T19:05:32.969Z",
+    "endTime": "2025-07-09T19:17:48.773Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "6af66882-668f-46c7-9c17-10701e81a346",
+    "type": "address-mow",
+    "clientId": "56e0822a-5786-49a8-87f1-205f579d5280",
+    "startTime": "2025-07-02T18:38:56.326Z",
+    "endTime": "2025-07-02T18:52:31.039Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "e56a61b5-f0eb-47fa-bf4f-618099d9ffbc",
+    "type": "address-mow",
+    "clientId": "58037ad3-c37d-423a-b653-708f9bde37f8",
+    "startTime": "2025-08-24T17:28:36.676Z",
+    "endTime": "2025-08-24T17:41:00.622Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "dc72ca9c-38f5-4411-8a7c-a96d42e0eace",
+    "type": "address-mow",
+    "clientId": "58037ad3-c37d-423a-b653-708f9bde37f8",
+    "startTime": "2025-08-07T12:49:37.665Z",
+    "endTime": "2025-08-07T13:00:44.550Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "e1c15247-f199-4284-aea5-78ef6b13e63d",
+    "type": "address-mow",
+    "clientId": "58037ad3-c37d-423a-b653-708f9bde37f8",
+    "startTime": "2025-07-09T18:55:15.260Z",
+    "endTime": "2025-07-09T19:04:45.639Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "65c4f002-a0ea-46b2-9582-d271d41f9e43",
+    "type": "address-mow",
+    "clientId": "58037ad3-c37d-423a-b653-708f9bde37f8",
+    "startTime": "2025-07-02T18:27:52.843Z",
+    "endTime": "2025-07-02T18:38:30.094Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "47a56206-21dd-45f5-b6b8-eee8c4bf7293",
+    "type": "address-mow",
+    "clientId": "c3a9dd65-e470-46b7-a5b6-da3df0ec62fe",
+    "startTime": "2025-08-07T13:39:24.215Z",
+    "endTime": "2025-08-07T14:05:00.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "11a1847c-412f-41db-bd02-d9a69a601a59",
+    "type": "address-mow",
+    "clientId": "c3a9dd65-e470-46b7-a5b6-da3df0ec62fe",
+    "startTime": "2025-07-09T19:21:53.496Z",
+    "endTime": "2025-07-09T19:46:51.769Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "3d9a661e-e0f7-4d9a-a298-809310467799",
+    "type": "address-mow",
+    "clientId": "0483f063-5c00-4f62-bcb6-41d3958823bc",
+    "startTime": "2025-08-24T16:52:55.189Z",
+    "endTime": "2025-08-24T17:10:36.091Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "e46fb848-75b3-4d5b-a243-d9130f568da6",
+    "type": "address-mow",
+    "clientId": "0483f063-5c00-4f62-bcb6-41d3958823bc",
+    "startTime": "2025-08-07T12:34:59.053Z",
+    "endTime": "2025-08-07T12:48:09.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "217882b6-2f22-4c57-ada6-5c618ebf4ef3",
+    "type": "address-mow",
+    "clientId": "0483f063-5c00-4f62-bcb6-41d3958823bc",
+    "startTime": "2025-07-30T17:35:59.680Z",
+    "endTime": "2025-07-30T17:49:42.261Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "48776edd-b7cd-4fed-8702-9dffe7f1f85c",
+    "type": "address-mow",
+    "clientId": "0483f063-5c00-4f62-bcb6-41d3958823bc",
+    "startTime": "2025-07-17T13:46:31.855Z",
+    "endTime": "2025-07-17T13:57:06.005Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "2533d89f-2f03-4b64-9cbd-8eacc16cf699",
+    "type": "address-mow",
+    "clientId": "0483f063-5c00-4f62-bcb6-41d3958823bc",
+    "startTime": "2025-07-09T18:41:15.546Z",
+    "endTime": "2025-07-09T18:52:36.298Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "31621839-2a4f-476d-b13e-1b18afd69296",
+    "type": "address-mow",
+    "clientId": "0483f063-5c00-4f62-bcb6-41d3958823bc",
+    "startTime": "2025-07-02T18:24:07.113Z",
+    "endTime": "2025-07-02T18:27:24.924Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "395928df-77d7-47da-8a48-861d8c75de81",
+    "type": "address-mow",
+    "clientId": "74419184-5b00-4a8a-b2f9-c94a8b51801c",
+    "startTime": "2025-08-29T19:01:58.550Z",
+    "endTime": "2025-08-29T19:16:41.870Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "b9d1776f-f2d6-4895-ac34-a6420d930009",
+    "type": "address-mow",
+    "clientId": "74419184-5b00-4a8a-b2f9-c94a8b51801c",
+    "startTime": "2025-08-20T19:08:34.628Z",
+    "endTime": "2025-08-20T19:19:22.948Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "802b084b-854b-4a1b-99ee-e988bcbe3d06",
+    "type": "address-mow",
+    "clientId": "74419184-5b00-4a8a-b2f9-c94a8b51801c",
+    "startTime": "2025-08-12T13:17:54.565Z",
+    "endTime": "2025-08-12T13:32:43.565Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "9822f2af-b231-412c-aab4-82264d6d14b4",
+    "type": "address-mow",
+    "clientId": "74419184-5b00-4a8a-b2f9-c94a8b51801c",
+    "startTime": "2025-07-30T13:55:00.000Z",
+    "endTime": "2025-07-30T14:08:00.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "3990f9cc-ff1a-4066-bc57-0c62e5bac003",
+    "type": "address-mow",
+    "clientId": "74419184-5b00-4a8a-b2f9-c94a8b51801c",
+    "startTime": "2025-07-17T13:33:07.974Z",
+    "endTime": "2025-07-17T13:40:21.692Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "c53549f3-762f-4a1a-a855-b3686074f0ed",
+    "type": "address-mow",
+    "clientId": "74419184-5b00-4a8a-b2f9-c94a8b51801c",
+    "startTime": "2025-07-10T18:59:24.162Z",
+    "endTime": "2025-07-10T19:12:39.460Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "505b4eac-efdc-435e-a87f-6b5c734190a9",
+    "type": "address-mow",
+    "clientId": "74419184-5b00-4a8a-b2f9-c94a8b51801c",
+    "startTime": "2025-07-02T17:57:06.695Z",
+    "endTime": "2025-07-02T18:10:00.796Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "2c612161-4bb4-4bf6-9638-5f82277d2838",
+    "type": "address-mow",
+    "clientId": "1eea1b2f-9b81-442e-810f-e97af8a7d4c3",
+    "startTime": "2025-08-29T18:43:25.491Z",
+    "endTime": "2025-08-29T19:01:08.615Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "df06c6ec-f44f-40a9-aa8c-7429cf9d7481",
+    "type": "address-mow",
+    "clientId": "1eea1b2f-9b81-442e-810f-e97af8a7d4c3",
+    "startTime": "2025-08-12T12:57:46.575Z",
+    "endTime": "2025-08-12T13:16:49.372Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "f903e996-2c55-444a-be56-64cb69bb0a5b",
+    "type": "address-mow",
+    "clientId": "1eea1b2f-9b81-442e-810f-e97af8a7d4c3",
+    "startTime": "2025-07-30T13:37:46.834Z",
+    "endTime": "2025-07-30T13:53:00.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "dee1b588-768b-4bf9-b91a-016a97b429c2",
+    "type": "address-mow",
+    "clientId": "1eea1b2f-9b81-442e-810f-e97af8a7d4c3",
+    "startTime": "2025-07-10T19:13:59.392Z",
+    "endTime": "2025-07-10T19:31:52.395Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "b062c41e-2811-4e40-951a-4c9d169cbd6b",
+    "type": "address-mow",
+    "clientId": "1eea1b2f-9b81-442e-810f-e97af8a7d4c3",
+    "startTime": "2025-07-02T17:41:27.028Z",
+    "endTime": "2025-07-02T17:56:10.561Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "30341116-1b57-4562-bb0c-0c27813b52ce",
+    "type": "address-mow",
+    "clientId": "af6ffaad-f3fd-455a-be3a-a84ad7dcaf6f",
+    "startTime": "2025-08-29T18:30:20.269Z",
+    "endTime": "2025-08-29T18:40:03.515Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "17fb3060-8241-4ec0-a625-276a037c1bd4",
+    "type": "address-mow",
+    "clientId": "af6ffaad-f3fd-455a-be3a-a84ad7dcaf6f",
+    "startTime": "2025-08-12T12:34:57.391Z",
+    "endTime": "2025-08-12T12:47:44.060Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "71ea7cdb-ba4a-44c4-8f2f-a450ea0cdf75",
+    "type": "address-mow",
+    "clientId": "af6ffaad-f3fd-455a-be3a-a84ad7dcaf6f",
+    "startTime": "2025-07-30T13:02:32.585Z",
+    "endTime": "2025-07-30T13:14:30.329Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "fcd774fd-2b89-4b28-ad5c-f10a9c90b25c",
+    "type": "address-mow",
+    "clientId": "af6ffaad-f3fd-455a-be3a-a84ad7dcaf6f",
+    "startTime": "2025-07-17T13:13:11.293Z",
+    "endTime": "2025-07-17T13:23:44.501Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "2dbe87f7-b92a-436f-b4ae-e98fa7d278df",
+    "type": "address-mow",
+    "clientId": "af6ffaad-f3fd-455a-be3a-a84ad7dcaf6f",
+    "startTime": "2025-07-02T17:12:06.284Z",
+    "endTime": "2025-07-02T17:21:17.283Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "950bbe13-6d51-4639-a7b8-4ca08ea9d77a",
+    "type": "address-mow",
+    "clientId": "5e51982c-0af9-4c49-ad73-007e6a2c6708",
+    "startTime": "2025-07-30T14:49:00.000Z",
+    "endTime": "2025-07-30T15:15:00.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "f0d987a0-84b9-4abe-9022-94a4283bc4e0",
+    "type": "address-mow",
+    "clientId": "5e51982c-0af9-4c49-ad73-007e6a2c6708",
+    "startTime": "2025-07-09T20:15:19.824Z",
+    "endTime": "2025-07-09T20:41:38.538Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "63f66756-4e21-40be-9273-d392628ff2fe",
+    "type": "address-mow",
+    "clientId": "5e51982c-0af9-4c49-ad73-007e6a2c6708",
+    "startTime": "2025-07-01T20:55:08.388Z",
+    "endTime": "2025-07-01T20:55:10.486Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "9b0b924d-cca5-4a88-978c-3a4861197611",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-08-29T18:28:04.650Z",
+    "endTime": "2025-08-29T21:33:11.068Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "58a1b0a6-4ab9-4b84-8184-4453c053cdac",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-08-24T16:46:30.806Z",
+    "endTime": "2025-08-24T19:32:47.135Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "133a6648-8116-4da7-8baa-04a67b6df03d",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-08-20T18:45:53.843Z",
+    "endTime": "2025-08-21T03:48:32.949Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "f143c607-68e9-44f0-b48f-b3c7372c2d58",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-08-12T12:32:01.780Z",
+    "endTime": "2025-08-12T13:39:00.652Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "93b84031-21e2-4304-981d-36ff6f935277",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-08-07T12:34:52.766Z",
+    "endTime": "2025-08-07T15:10:00.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "7421aaf8-01a0-4f0f-b077-5e91a269cac5",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-07-30T17:30:00.000Z",
+    "endTime": "2025-07-30T18:50:00.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "1a9e3991-dc4e-462b-b671-53f937da84a6",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-07-30T12:59:56.637Z",
+    "endTime": "2025-07-30T16:47:40.265Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "81b8d8f0-9b4c-4996-83f1-8e7316cb3777",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-07-23T18:07:47.698Z",
+    "endTime": "2025-07-23T19:30:00.000Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "6bcf15f0-cfbc-467a-9299-f754ab21080a",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-07-19T18:26:10.183Z",
+    "endTime": "2025-07-19T21:57:41.850Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "a7d4b00d-713c-4f0e-8474-06fd9e03c971",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-07-17T13:09:46.212Z",
+    "endTime": "2025-07-17T15:13:39.090Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "c19f0654-9068-4507-91f7-b9fb50917df0",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-07-10T18:53:17.223Z",
+    "endTime": "2025-07-10T20:08:17.117Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "26d5ef8c-7b61-40ac-b48e-00ea716e433d",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-07-09T18:35:53.926Z",
+    "endTime": "2025-07-09T21:05:01.080Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  },
+  {
+    "id": "8f0f4724-edce-46bf-b338-4ec5d1a9672a",
+    "type": "workday",
+    "clientId": null,
+    "startTime": "2025-07-02T17:09:25.802Z",
+    "endTime": "2025-07-02T19:45:11.271Z",
+    "breakTimeTotal": 0,
+    "stuckTimeTotal": 0,
+    "status": "completed"
+  }
 ];
-
-const mockSessions: Session[] = sessionSeeds.map((s, i) => {
-    const start = daysAgo(s.day, Math.floor(s.startHour), (s.startHour % 1) * 60);
-    return {
-        id: sid(i + 1),
-        type: 'address-mow' as const,
-        clientId: cid(s.clientIdx),
-        startTime: start,
-        endTime: addMinutes(start, s.durationMin),
-        breakTimeTotal: s.breakMin * 60,
-        stuckTimeTotal: 0,
-        status: 'completed' as const,
-    };
-});
-
-// Also add a couple workday sessions
-mockSessions.push(
-    {
-        id: 'mock-workday-001', type: 'workday', clientId: null,
-        startTime: daysAgo(1, 7, 45), endTime: daysAgo(1, 15, 30),
-        breakTimeTotal: 1800, status: 'completed',
-    },
-    {
-        id: 'mock-workday-002', type: 'workday', clientId: null,
-        startTime: daysAgo(2, 7, 30), endTime: daysAgo(2, 14, 45),
-        breakTimeTotal: 2400, status: 'completed',
-    },
-);
-
-// ── Gas Logs ─────────────────────────────────────
-
 const mockGasLogs: GasLog[] = [
-    { id: 'mock-gas-001', date: daysAgo(1), liters: 18.5, pricePerLiter: 1.42, total: 26.27, isAiScanned: false },
-    { id: 'mock-gas-002', date: daysAgo(5), liters: 22.0, pricePerLiter: 1.38, total: 30.36, isAiScanned: false },
-    { id: 'mock-gas-003', date: daysAgo(9), liters: 15.8, pricePerLiter: 1.45, total: 22.91, isAiScanned: true },
-    { id: 'mock-gas-004', date: daysAgo(13), liters: 20.2, pricePerLiter: 1.40, total: 28.28, isAiScanned: false },
+  {
+    "id": "7afd01b0-30fd-4016-8717-59b44bce3bf6",
+    "date": "2025-08-16T13:00:14.988Z",
+    "liters": 6.09,
+    "pricePerLiter": 1.4449917898193763,
+    "total": 8.8,
+    "isAiScanned": false
+  },
+  {
+    "id": "55a48f8f-57dd-4c14-8b45-c2fbdd54f4af",
+    "date": "2025-08-07T14:32:23.872Z",
+    "liters": 6.31,
+    "pricePerLiter": 1.4374009508716326,
+    "total": 9.07,
+    "isAiScanned": false
+  },
+  {
+    "id": "ce5ba44b-eb1a-484a-afaf-64e250421747",
+    "date": "2025-07-17T14:38:31.778Z",
+    "liters": 9.22,
+    "pricePerLiter": 1.4154013015184381,
+    "total": 13.05,
+    "isAiScanned": false
+  },
+  {
+    "id": "fd4b54ef-6c23-41c2-9a32-c8fc50ba3aaa",
+    "date": "2025-07-09T19:53:29.783Z",
+    "liters": 3.89,
+    "pricePerLiter": 1.3881748071979434,
+    "total": 5.4,
+    "isAiScanned": false
+  },
+  {
+    "id": "b917c4ff-e4d5-4b15-a6e9-d4a2a0f123cb",
+    "date": "2025-07-02T19:27:47.456Z",
+    "liters": 6.65,
+    "pricePerLiter": 1.4466165413533834,
+    "total": 9.62,
+    "isAiScanned": false
+  }
 ];
-
-// ── Maintenance Logs ─────────────────────────────
-
-const mockMaintenanceLogs: MaintenanceLog[] = [
-    {
-        id: 'mock-maint-001', date: daysAgo(6),
-        description: 'Replaced mower blades — they were getting dull',
-        parts: [
-            { id: 'mp-001', name: 'Blade Set (Honda)', cost: 32.99 },
-            { id: 'mp-002', name: 'Blade Bolt Kit', cost: 8.50 },
-        ],
-        totalCost: 41.49,
-    },
-    {
-        id: 'mock-maint-002', date: daysAgo(12),
-        description: 'Oil change & air filter replacement',
-        parts: [
-            { id: 'mp-003', name: 'SAE 10W-30 Oil', cost: 12.99 },
-            { id: 'mp-004', name: 'Air Filter', cost: 9.99 },
-        ],
-        totalCost: 22.98,
-    },
-];
-
-// ── Equipment ────────────────────────────────────
-
-// Total mow time from sessions ≈ 1420 min ≈ 23.7 hours
-const totalMowHours = sessionSeeds.reduce((acc, s) => acc + (s.durationMin - s.breakMin), 0) / 60;
-
-const mockEquipment: Equipment[] = [
-    {
-        id: 'mock-eq-001',
-        name: 'Honda HRX217',
-        type: 'mower',
-        currentHours: Math.round(totalMowHours * 10) / 10,
-        serviceIntervals: [
-            {
-                id: 'mock-si-001', name: 'Blade Sharpening',
-                intervalHours: 25, lastServiceHours: 0,
-                lastServiceDate: daysAgo(6),
-            },
-            {
-                id: 'mock-si-002', name: 'Oil Change',
-                intervalHours: 50, lastServiceHours: 0,
-                lastServiceDate: daysAgo(12),
-            },
-            {
-                id: 'mock-si-003', name: 'Air Filter',
-                intervalHours: 100, lastServiceHours: 0,
-                lastServiceDate: daysAgo(12),
-            },
-        ],
-    },
-    {
-        id: 'mock-eq-002',
-        name: 'STIHL FS 91 R',
-        type: 'trimmer',
-        currentHours: 8.4,
-        serviceIntervals: [
-            {
-                id: 'mock-si-004', name: 'Spark Plug',
-                intervalHours: 75, lastServiceHours: 0,
-                lastServiceDate: daysAgo(30),
-            },
-            {
-                id: 'mock-si-005', name: 'Line Head Replace',
-                intervalHours: 20, lastServiceHours: 0,
-                lastServiceDate: daysAgo(15),
-            },
-        ],
-    },
-];
-
-// ── Export seed function ─────────────────────────
+const mockMaintenanceLogs: MaintenanceLog[] = [];
+const mockEquipment: Equipment[] = [];
 
 export function getSeedData() {
     return {
@@ -265,7 +808,8 @@ export function getSeedData() {
         gasLogs: mockGasLogs,
         maintenanceLogs: mockMaintenanceLogs,
         equipment: mockEquipment,
-        homeAddress: '500 S Orange Ave, Orlando, FL',
+        // Default home in Orlando
+        homeAddress: "500 S Orange Ave, Orlando, FL",
         homeLat: 28.5355,
         homeLng: -81.3790,
         laborRate: 25,
