@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone } from "lucide-react";
+import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -85,7 +86,7 @@ function SwipeDots({ count, active }: { count: number; active: number }) {
 }
 
 // ── Metric Card ────────────────────────────────────────────────────────────────
-function Metric({ label, value, icon: Icon, colorClass = "text-primary/60" }: { label: string; value: string | number; icon: any; colorClass?: string }) {
+function Metric({ label, value, icon: Icon, colorClass = "text-primary/60" }: { label: string; value: string | number; icon: LucideIcon; colorClass?: string }) {
     return (
         <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5 flex flex-col group hover:bg-white/[0.05] transition-colors relative overflow-hidden">
             <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -116,6 +117,7 @@ export function SwipeableClientCard({
     onEdit,
     InlineMowTimer,
 }: SwipeableClientCardProps) {
+    const router = useRouter();
     const [activePanel, setActivePanel] = useState(0);
     const touchStartX = useRef(0);
     const touchStartY = useRef(0);
@@ -389,12 +391,23 @@ export function SwipeableClientCard({
                         </div>
 
                         {client.routeScreenshot && client.routeScreenshot.startsWith("data:image") ? (
-                            <div className="rounded-xl overflow-hidden border border-white/10 bg-white/[0.02] shadow-2xl">
-                                <img
-                                    src={client.routeScreenshot}
-                                    alt={`Route for ${client.name}`}
-                                    className="w-full h-auto object-contain"
-                                />
+                            <div className="space-y-4">
+                                <div className="rounded-xl overflow-hidden border border-white/10 bg-white/[0.02] shadow-2xl">
+                                    <img
+                                        src={client.routeScreenshot}
+                                        alt={`Route for ${client.name}`}
+                                        className="w-full h-auto object-contain"
+                                    />
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setActivePanel(0)}
+                                    className="w-full h-10 border-white/10 bg-white/5 text-xs font-bold text-white hover:bg-white/10 flex items-center justify-center gap-2 group"
+                                >
+                                    <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
+                                    Exit Route View
+                                </Button>
                             </div>
                         ) : (
                             <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black group min-h-[220px]">
@@ -415,9 +428,23 @@ export function SwipeableClientCard({
                                     <p className="text-[10px] text-gray-300 leading-relaxed mb-3">
                                         No active route overlay detected. Synchronize with satellite mapping to view property boundaries.
                                     </p>
-                                    <Button variant="outline" size="sm" className="w-fit text-[10px] h-7 border-primary/30 text-primary hover:bg-primary/10">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => router.push(`/route-planner?initClient=${client.id}`)}
+                                        className="w-fit text-[10px] h-7 border-primary/30 text-primary hover:bg-primary/10"
+                                    >
                                         Initialize Route Map
                                     </Button>
+                                </div>
+                                <div className="absolute top-4 right-4 flex gap-2">
+                                    <button
+                                        onClick={() => setActivePanel(0)}
+                                        className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+                                        title="Exit Panel"
+                                    >
+                                        <XCircle className="w-4 h-4" />
+                                    </button>
                                 </div>
 
                                 {client.lat && client.lng && (

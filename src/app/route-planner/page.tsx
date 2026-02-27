@@ -1,10 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { MapPin, Navigation, Home, Route, ExternalLink, Fuel } from "lucide-react";
+import { MapPin, Navigation, Home, Route, ExternalLink, Fuel, ArrowLeft, Zap } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { optimizeRoute, type OptimizedRoute } from "@/lib/route-optimizer";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 // Leaflet uses `window` so must be dynamically imported with SSR disabled
 const LawnMap = dynamic(() => import("@/components/LawnMap"), {
@@ -20,8 +21,18 @@ const LawnMap = dynamic(() => import("@/components/LawnMap"), {
 });
 
 export default function RoutePlannerPage() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const initClientId = searchParams.get("initClient");
+
     const { clients, homeAddress, homeLat, homeLng, setHomeAddress, fuelCostPerKm } = useStore();
     const clientsWithCoords = clients.filter(c => c.lat && c.lng);
+
+    // Find client for initialization
+    const initClient = useMemo(() =>
+        clients.find(c => c.id === initClientId),
+        [clients, initClientId]
+    );
 
     const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
     const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
@@ -74,15 +85,36 @@ export default function RoutePlannerPage() {
 
     return (
         <main className="p-4 pb-28 min-h-screen space-y-4">
-            <div className="pt-4 mb-2">
-                <div className="flex items-center gap-2 mb-1">
-                    <Navigation className="w-5 h-5 text-primary" />
-                    <h1 className="text-2xl font-extrabold tracking-tight text-white">
-                        <span className="text-primary">Route</span> Planner
-                    </h1>
+            <div className="pt-4 mb-2 flex items-start justify-between">
+                <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <Navigation className="w-5 h-5 text-primary" />
+                        <h1 className="text-2xl font-extrabold tracking-tight text-white">
+                            <span className="text-primary">Route</span> Planner
+                        </h1>
+                    </div>
+                    <p className="text-muted-foreground text-xs">Draw lawn boundaries on satellite view · Generate optimal mowing routes</p>
                 </div>
-                <p className="text-muted-foreground text-xs">Draw lawn boundaries on satellite view · Generate optimal mowing routes</p>
+                <button
+                    onClick={() => router.push("/addresses")}
+                    className="p-2 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2 text-xs font-bold"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    BACK
+                </button>
             </div>
+
+            {initClient && (
+                <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <p className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-primary" />
+                        Initializing Route for {initClient.name}
+                    </p>
+                    <p className="text-xs text-primary/70">
+                        Map focused on {initClient.address}. Draw the lawn boundary to begin.
+                    </p>
+                </div>
+            )}
 
             {/* Daily Route Optimizer */}
             <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
@@ -262,7 +294,7 @@ export default function RoutePlannerPage() {
             </div>
 
             {/* Map Component */}
-            <LawnMap />
+            <LawnMap initialAddress={initClient?.address} />
         </main>
     );
 }

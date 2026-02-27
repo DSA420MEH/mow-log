@@ -17,6 +17,7 @@ type DrawMode = "lawn" | "obstacle";
 interface LawnMapProps {
     initialLat?: number;
     initialLng?: number;
+    initialAddress?: string;
     onAreaCalculated?: (sqft: number) => void;
     onRoutePlanned?: (plan: RoutePlan) => void;
 }
@@ -25,6 +26,7 @@ interface LawnMapProps {
 export default function LawnMap({
     initialLat = 46.1,
     initialLng = -64.8,
+    initialAddress,
     onAreaCalculated,
     onRoutePlanned,
 }: LawnMapProps) {
@@ -90,6 +92,7 @@ export default function LawnMap({
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
 
     // ─── Update Draw Control When Mode Changes ──
     useEffect(() => {
@@ -220,6 +223,20 @@ export default function LawnMap({
         }
         setSearching(false);
     }, [address]);
+
+    // ─── Auto-search on Initial Address ─────────
+    const hasAutoSearched = useRef(false);
+    useEffect(() => {
+        if (initialAddress && mapRef.current && !hasAutoSearched.current) {
+            hasAutoSearched.current = true;
+            setAddress(initialAddress);
+            // We need a slight delay to ensure the map is fully stable or just call search
+            const timer = setTimeout(() => {
+                searchAddress();
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [initialAddress, searchAddress]);
 
     // ─── Generate Route ─────────────────────────
     const generateRoute = useCallback(() => {

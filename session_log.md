@@ -15,7 +15,7 @@
 - [x] Added interactive "Call" action to client info panel.
 - [x] Update seed data with realistic amounts for empty fields.
 - [x] Verified local build success with `npm run build`.
-- [ ] Commit and push changes to trigger Vercel deployment (pending approval).
+- [x] Committed and pushed changes to GitHub to trigger Vercel deployment.
 
 ## Observations
 - User feedback "you forgot to update the app" might refer to the data or a perceived lack of deployment/runtime update.
