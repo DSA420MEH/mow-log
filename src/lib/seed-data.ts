@@ -5,8 +5,10 @@ const mockClients: Client[] = [
     "id": "a569006b-669c-4e3c-88b9-01bff9a608bd",
     "name": "rands pamela",
     "address": "7 white birch",
-    "phone": "",
-    "sqft": "0",
+    "phone": "(555) 123-4567",
+    "email": "pamela.rands@email.com",
+    "contractLength": "6 months",
+    "sqft": "4500",
     "billingType": "PerCut",
     "amount": 25,
     "notes": "",
@@ -16,10 +18,12 @@ const mockClients: Client[] = [
     "id": "30694879-913e-49fd-aa2a-1e8c9118e727",
     "name": "80 southpine",
     "address": "80 southpine",
-    "phone": "",
-    "sqft": "0",
+    "phone": "(555) 987-6543",
+    "email": "contact@southpine.com",
+    "contractLength": "Yearly",
+    "sqft": "8200",
     "billingType": "Regular",
-    "amount": 0,
+    "amount": 120,
     "notes": "",
     "createdAt": "2025-07-02T17:22:30.713Z"
   },
@@ -802,17 +806,17 @@ const mockMaintenanceLogs: MaintenanceLog[] = [];
 const mockEquipment: Equipment[] = [];
 
 export function getSeedData() {
-    return {
-        clients: mockClients,
-        sessions: mockSessions,
-        gasLogs: mockGasLogs,
-        maintenanceLogs: mockMaintenanceLogs,
-        equipment: mockEquipment,
-        // Default home in Orlando
-        homeAddress: "500 S Orange Ave, Orlando, FL",
-        homeLat: 28.5355,
-        homeLng: -81.3790,
-        laborRate: 25,
-        fuelCostPerKm: 0.15,
-    };
+  return {
+    clients: mockClients,
+    sessions: mockSessions,
+    gasLogs: mockGasLogs,
+    maintenanceLogs: mockMaintenanceLogs,
+    equipment: mockEquipment,
+    // Default home in Orlando
+    homeAddress: "500 S Orange Ave, Orlando, FL",
+    homeLat: 28.5355,
+    homeLng: -81.3790,
+    laborRate: 25,
+    fuelCostPerKm: 0.15,
+  };
 }

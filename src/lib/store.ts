@@ -8,6 +8,8 @@ export interface Client {
     name: string;
     address: string;
     phone: string;
+    email?: string;
+    contractLength?: string;
     sqft: string;
     billingType: BillingType;
     amount: number;

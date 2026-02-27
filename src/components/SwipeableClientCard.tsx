@@ -11,6 +11,8 @@ interface ClientData {
     name: string;
     address: string;
     phone?: string;
+    email?: string;
+    contractLength?: string;
     sqft?: string;
     billingType: string;
     amount: number;
@@ -98,7 +100,7 @@ function Metric({ label, value, icon: Icon, colorClass = "text-primary/60" }: { 
 }
 
 // ── Panel Labels ───────────────────────────────────────────────────────────────
-const PANEL_LABELS = ["Info", "Stats", "Route"];
+const PANEL_LABELS = ["Stats", "Info", "Route"];
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function SwipeableClientCard({
@@ -195,6 +197,61 @@ export function SwipeableClientCard({
                 </button>
             </div>
 
+            {/* Persistent Client Header */}
+            <div className="px-4 pt-4 pb-2">
+                <div className="flex items-start justify-between">
+                    <div className="flex gap-3 items-start">
+                        <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base", avatarStyle.bg, avatarStyle.text)}>
+                            {getInitials(client.name)}
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-white leading-none mb-1">{client.name}</h3>
+                            <div className="text-xs text-muted-foreground flex items-start gap-1">
+                                <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                                <div className="flex flex-col leading-tight">
+                                    <span className="text-gray-300">{street || client.address}</span>
+                                    {cityZip && <span className="text-[10px] mt-0.5 opacity-70 uppercase tracking-wider">{cityZip}</span>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Profit Badge */}
+                {showProfit && (
+                    <div className="flex items-center gap-2 mt-3">
+                        <div className={cn(
+                            "flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold",
+                            isPositive ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
+                        )}>
+                            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                            {fmtMoney(profit.profit)}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">
+                            {client.billingType === "Regular" ? `$${client.amount}/mo` : `$${client.amount}/cut`}
+                        </span>
+                    </div>
+                )}
+
+                {/* Active Mowing Timer */}
+                {isActiveMowing && activeSession && (
+                    <div className="mt-3 py-2 border-y border-primary/20 flex items-center justify-center gap-2">
+                        <Timer className="w-4 h-4 text-primary animate-pulse" />
+                        <span className="text-sm font-bold text-primary tracking-widest uppercase">Mowing Now - </span>
+                        <span className="text-sm font-bold font-mono text-white">
+                            <InlineMowTimer
+                                startTime={activeSession.startTime}
+                                breakTimeTotal={activeSession.breakTimeTotal}
+                                stuckTimeTotal={activeSession.stuckTimeTotal}
+                                currentBreakOrStuckStartTime={activeSession.currentBreakOrStuckStartTime}
+                                status={activeSession.status}
+                                endTime={activeSession.endTime}
+                            />
+                        </span>
+                    </div>
+                )}
+            </div>
+
             {/* Swipeable panels container */}
             <div
                 className="swipe-container flex-1"
@@ -206,110 +263,11 @@ export function SwipeableClientCard({
                     className="swipe-track"
                     style={{ transform: `translateX(-${activePanel * 100}%)` }}
                 >
-                    {/* ═══ Panel 0: Info ═══ */}
-                    <div className="swipe-panel p-4 pt-2">
-                        {/* Client Header */}
-                        <div className="flex items-start justify-between mb-4">
-                            <div className="flex gap-3 items-start">
-                                <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base", avatarStyle.bg, avatarStyle.text)}>
-                                    {getInitials(client.name)}
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-bold text-white leading-none mb-1">{client.name}</h3>
-                                    <div className="text-xs text-muted-foreground flex items-start gap-1">
-                                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                                        <div className="flex flex-col leading-tight">
-                                            <span className="text-gray-300">{street || client.address}</span>
-                                            {cityZip && <span className="text-[10px] mt-0.5 opacity-70 uppercase tracking-wider">{cityZip}</span>}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Profit Badge */}
-                        {showProfit && (
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className={cn(
-                                    "flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold",
-                                    isPositive ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
-                                )}>
-                                    {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                    {fmtMoney(profit.profit)}
-                                </div>
-                                <span className="text-[11px] text-muted-foreground">
-                                    {client.billingType === "Regular" ? `$${client.amount}/mo` : `$${client.amount}/cut`}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Active Mowing Timer */}
-                        {isActiveMowing && activeSession && (
-                            <div className="mb-3 py-2 border-y border-primary/20 flex items-center justify-center gap-2">
-                                <Timer className="w-4 h-4 text-primary animate-pulse" />
-                                <span className="text-sm font-bold text-primary tracking-widest uppercase">Mowing Now - </span>
-                                <span className="text-sm font-bold font-mono text-white">
-                                    <InlineMowTimer
-                                        startTime={activeSession.startTime}
-                                        breakTimeTotal={activeSession.breakTimeTotal}
-                                        stuckTimeTotal={activeSession.stuckTimeTotal}
-                                        currentBreakOrStuckStartTime={activeSession.currentBreakOrStuckStartTime}
-                                        status={activeSession.status}
-                                        endTime={activeSession.endTime}
-                                    />
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Quick Stats Row */}
-                        <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
-                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center">
-                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Client Phone</span>
-                                <span className="text-gray-100 font-bold text-sm tracking-tight">{client.phone || "No Phone"}</span>
-                            </div>
-                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center overflow-hidden">
-                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Lot Scale</span>
-                                <span className="text-gray-100 font-bold text-sm truncate tracking-tight">{client.sqft || "Unknown"}</span>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="mt-auto pt-1 flex items-center justify-between">
-                            {stats.daysSinceNum >= 0 ? (
-                                <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap", daysSinceColor)}>
-                                    {stats.daysSince}
-                                </span>
-                            ) : (
-                                <span className="text-xs px-2.5 py-1 rounded-full font-medium text-muted-foreground bg-white/5">
-                                    Never
-                                </span>
-                            )}
-
-                            {isActiveMowing ? (
-                                <Button
-                                    onClick={onCompleteMowing}
-                                    className="bg-white hover:bg-white/90 text-black font-bold shadow-[0_4px_15px_rgba(255,255,255,0.2)] transition-all active:scale-[0.97]"
-                                >
-                                    Complete Mowing
-                                </Button>
-                            ) : (
-                                <Button
-                                    onClick={onStartMowing}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[0_4px_15px_rgba(170,255,0,0.2)] transition-all active:scale-[0.97]"
-                                >
-                                    <Timer className="w-4 h-4 mr-2" />
-                                    Start Mowing
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* ═══ Panel 1: Stats ═══ */}
+                    {/* ═══ Panel 0: Stats (Default) ═══ */}
                     <div className="swipe-panel p-4 pt-2">
                         <div className="flex items-center gap-2 mb-3">
                             <BarChart3 className="w-4 h-4 text-primary" />
                             <h4 className="text-sm font-bold text-white">Session Stats</h4>
-                            <span className="text-[10px] text-muted-foreground ml-auto">{client.name}</span>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2.5">
@@ -342,6 +300,64 @@ export function SwipeableClientCard({
                                 </div>
                             </div>
                         )}
+
+                        {/* Footer */}
+                        <div className="mt-4 pt-2 flex items-center justify-between border-t border-white/5">
+                            {stats.daysSinceNum >= 0 ? (
+                                <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap", daysSinceColor)}>
+                                    {stats.daysSince}
+                                </span>
+                            ) : (
+                                <span className="text-xs px-2.5 py-1 rounded-full font-medium text-muted-foreground bg-white/5">
+                                    Never
+                                </span>
+                            )}
+
+                            {isActiveMowing ? (
+                                <Button
+                                    onClick={onCompleteMowing}
+                                    className="bg-white hover:bg-white/90 text-black font-bold shadow-[0_4px_15px_rgba(255,255,255,0.2)] transition-all active:scale-[0.97]"
+                                >
+                                    Complete Mowing
+                                </Button>
+                            ) : (
+                                <Button
+                                    onClick={onStartMowing}
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[0_4px_15px_rgba(170,255,0,0.2)] transition-all active:scale-[0.97]"
+                                >
+                                    <Timer className="w-4 h-4 mr-2" />
+                                    Start Mowing
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ═══ Panel 1: Info ═══ */}
+                    <div className="swipe-panel p-4 pt-2">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Pencil className="w-4 h-4 text-primary" />
+                            <h4 className="text-sm font-bold text-white">Client Info</h4>
+                        </div>
+
+                        {/* Client Details Grid */}
+                        <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center">
+                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Phone</span>
+                                <span className="text-gray-100 font-bold text-sm tracking-tight">{client.phone || "—"}</span>
+                            </div>
+                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center overflow-hidden">
+                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Lot Size</span>
+                                <span className="text-gray-100 font-bold text-sm truncate tracking-tight">{client.sqft || "—"}</span>
+                            </div>
+                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center overflow-hidden">
+                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Email</span>
+                                <span className="text-gray-100 font-bold text-sm truncate tracking-tight">{client.email || "—"}</span>
+                            </div>
+                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center">
+                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Contract</span>
+                                <span className="text-gray-100 font-bold text-sm tracking-tight">{client.contractLength || "—"}</span>
+                            </div>
+                        </div>
                     </div>
 
                     {/* ═══ Panel 2: Route ═══ */}
@@ -349,7 +365,6 @@ export function SwipeableClientCard({
                         <div className="flex items-center gap-2 mb-3">
                             <Route className="w-4 h-4 text-primary" />
                             <h4 className="text-sm font-bold text-white">Saved Route</h4>
-                            <span className="text-[10px] text-muted-foreground ml-auto">{client.name}</span>
                         </div>
 
                         {client.routeScreenshot && client.routeScreenshot.startsWith("data:image") ? (
