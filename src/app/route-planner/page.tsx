@@ -4,8 +4,9 @@ import dynamic from "next/dynamic";
 import { MapPin, Navigation, Home, Route, ExternalLink, Fuel, ArrowLeft, Zap } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { optimizeRoute, type OptimizedRoute } from "@/lib/route-optimizer";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 
 // Leaflet uses `window` so must be dynamically imported with SSR disabled
 const LawnMap = dynamic(() => import("@/components/LawnMap"), {
@@ -20,7 +21,7 @@ const LawnMap = dynamic(() => import("@/components/LawnMap"), {
     ),
 });
 
-export default function RoutePlannerPage() {
+function RoutePlannerContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const initClientId = searchParams.get("initClient");
@@ -292,9 +293,23 @@ export default function RoutePlannerPage() {
                     Set mower specs → Generate Route.
                 </p>
             </div>
-
             {/* Map Component */}
             <LawnMap initialAddress={initClient?.address} />
         </main>
+    );
+}
+
+export default function RoutePlannerPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <Zap className="w-12 h-12 text-primary animate-pulse" />
+                    <span className="text-sm font-bold text-primary uppercase tracking-widest">Initializing Planner...</span>
+                </div>
+            </div>
+        }>
+            <RoutePlannerContent />
+        </Suspense>
     );
 }

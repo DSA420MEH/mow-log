@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -431,10 +432,12 @@ export function SwipeableClientCard({
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => router.push(`/route-planner?initClient=${client.id}`)}
+                                        asChild
                                         className="w-fit text-[10px] h-7 border-primary/30 text-primary hover:bg-primary/10"
                                     >
-                                        Initialize Route Map
+                                        <Link href={`/route-planner?initClient=${client.id}`}>
+                                            Initialize Route Map
+                                        </Link>
                                     </Button>
                                 </div>
                                 <div className="absolute top-4 right-4 flex gap-2">
@@ -448,7 +451,7 @@ export function SwipeableClientCard({
                                 </div>
 
                                 {client.lat && client.lng && (
-                                    <div className="absolute top-4 right-4 px-2 py-1 rounded bg-black/60 backdrop-blur-md border border-white/5 text-[9px] font-mono text-white/70">
+                                    <div className="absolute top-4 left-4 px-2 py-1 rounded bg-black/60 backdrop-blur-md border border-white/5 text-[9px] font-mono text-white/70">
                                         {client.lat.toFixed(4)}, {client.lng.toFixed(4)}
                                     </div>
                                 )}
