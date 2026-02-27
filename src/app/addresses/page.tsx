@@ -2,13 +2,12 @@
 "use client";
 
 import { useStore, BillingType } from "@/lib/store";
-import { computeClientProfit, computeEquipmentAlerts, type ClientProfitData } from "@/lib/selectors";
+import { computeClientProfit, computeEquipmentAlerts } from "@/lib/selectors";
 import { AddAddressForm } from "@/components/AddAddressForm";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, Pencil, Timer, ListTodo, Plus, Search, Route, TrendingUp, TrendingDown, AlertTriangle, DollarSign } from "lucide-react";
+import { SwipeableClientCard } from "@/components/SwipeableClientCard";
+import { MapPin, Timer, ListTodo, Plus, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { SettingsModal } from "@/components/SettingsModal";
 import { cn } from "@/lib/utils";
 
@@ -27,35 +26,6 @@ const generateAvatarStyle = (name: string) => {
     ];
     return colors[Math.abs(hash) % colors.length];
 };
-
-const getInitials = (name: string) => {
-    return name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .substring(0, 2);
-};
-
-// Profit badge shown on each client card
-function ClientProfitBadge({ clientId }: { clientId: string }) {
-    const { sessions, clients, gasLogs, maintenanceLogs } = useStore();
-    const profit = useMemo(() => computeClientProfit(clientId), [clientId, sessions, clients, gasLogs, maintenanceLogs]);
-    if (profit.revenue === 0 && profit.profit === 0) return null;
-
-    const isPositive = profit.profit >= 0;
-    const fmtMoney = (n: number) => (n < 0 ? "-$" : "$") + Math.abs(n).toFixed(0);
-
-    return (
-        <div className={cn(
-            "flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold",
-            isPositive ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
-        )}>
-            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            {fmtMoney(profit.profit)}
-        </div>
-    );
-}
 
 // Equipment alerts banner
 function EquipmentAlertBanner() {
@@ -85,9 +55,38 @@ function EquipmentAlertBanner() {
     );
 }
 
+// Inline mow timer component
+function InlineMowTimer({ startTime, breakTimeTotal = 0, stuckTimeTotal = 0, status, endTime, currentBreakOrStuckStartTime = null }: { startTime: string, breakTimeTotal?: number, stuckTimeTotal?: number, status: string, endTime: string | null, currentBreakOrStuckStartTime?: string | null }) {
+    const [elapsed, setElapsed] = useState(0);
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (status === 'active') {
+            const start = new Date(startTime).getTime();
+            interval = setInterval(() => {
+                setElapsed(Math.floor((new Date().getTime() - start) / 1000) - breakTimeTotal - stuckTimeTotal);
+            }, 1000);
+        } else {
+            const start = new Date(startTime).getTime();
+            const frozenEnd = endTime
+                ? new Date(endTime).getTime()
+                : (currentBreakOrStuckStartTime ? new Date(currentBreakOrStuckStartTime).getTime() : new Date().getTime());
+            setElapsed(Math.floor((frozenEnd - start) / 1000) - breakTimeTotal - stuckTimeTotal);
+        }
+        return () => clearInterval(interval);
+    }, [startTime, breakTimeTotal, stuckTimeTotal, status, endTime, currentBreakOrStuckStartTime]);
+
+    const h = Math.floor(elapsed / 3600);
+    const m = Math.floor((elapsed % 3600) / 60);
+    const s = elapsed % 60;
+    const timeStr = h > 0
+        ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+        : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+    return <span>{timeStr}</span>;
+}
+
 export default function AddressesPage() {
-    const { clients, sessions, startMowSession, endMowSession, activeMowSessionId } = useStore();
-    const router = useRouter();
+    const { clients, sessions, startMowSession, endMowSession, activeMowSessionId, gasLogs, maintenanceLogs } = useStore();
 
     const activeSession = sessions.find(s => s.id === activeMowSessionId);
 
@@ -105,7 +104,6 @@ export default function AddressesPage() {
 
     const handleStartMowing = (clientId: string) => {
         startMowSession(clientId);
-        // Removed router.push("/logs");
     };
 
     const handleCompleteMowing = () => {
@@ -154,7 +152,7 @@ export default function AddressesPage() {
             daysSince = `${daysSinceNum} days ago`;
         }
 
-        return { totalVisits, totalTimeStr, daysSince, daysSinceNum, clientSessions, totalStuckStr, totalBreakStr };
+        return { totalVisits, totalTimeStr, avgTime, daysSince, daysSinceNum, clientSessions, totalStuckStr, totalBreakStr };
     };
 
     const displayClients = activeTab === 'All' ? clients : activeTab === 'Regular' ? regularClients : perCutClients;
@@ -168,7 +166,7 @@ export default function AddressesPage() {
                         <h1 className="text-3xl font-bold tracking-tight text-white mb-1">
                             Saved Addresses
                         </h1>
-                        <p className="text-muted-foreground text-sm">Manage your route and client details</p>
+                        <p className="text-muted-foreground text-sm">Swipe cards to view stats & routes</p>
                     </div>
                 </div>
 
@@ -220,186 +218,43 @@ export default function AddressesPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {displayClients.map((client) => {
-                        const { totalVisits, totalTimeStr, daysSince, daysSinceNum, totalStuckStr, totalBreakStr } = getClientStats(client.id);
+                        const stats = getClientStats(client.id);
                         const avatarStyle = generateAvatarStyle(client.name);
                         const isActiveMowing = activeSession?.clientId === client.id;
-
-                        let daysSinceColor = "text-primary bg-primary/10";
-                        if (daysSinceNum > 10) daysSinceColor = "text-rose-400 bg-rose-500/10";
-                        else if (daysSinceNum > 5) daysSinceColor = "text-orange-400 bg-orange-500/10";
-
-                        const [street, cityZip] = client.address.split(', ');
+                        const profit = computeClientProfit(client.id);
 
                         return (
-                            <div key={client.id} className={cn(
-                                "glass-card rounded-2xl bg-[#1a201c] border p-5 relative overflow-hidden flex flex-col transition-colors",
-                                isActiveMowing ? "border-primary shadow-[0_0_15px_rgba(170,255,0,0.1)]" : "border-white/5 hover:border-primary/20",
-                            )}>
-                                {isActiveMowing && (
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70"></div>
-                                )}
-
-                                {/* Route Link / Thumbnail */}
-                                {client.lat && client.lng && (
-                                    <button
-                                        onClick={() => router.push(`/route-planner?lat=${client.lat}&lng=${client.lng}`)}
-                                        className="mb-4 w-full rounded-xl overflow-hidden border border-white/10 hover:border-primary/40 transition-colors group relative bg-white/[0.03]"
-                                    >
-                                        {(client.routeScreenshot && client.routeScreenshot.startsWith('data:image')) ? (
-                                            <>
-                                                <img
-                                                    src={client.routeScreenshot}
-                                                    alt={`Route for ${client.name}`}
-                                                    className="w-full h-24 object-cover"
-                                                />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <span className="text-xs font-semibold text-white">Open Route</span>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="w-full h-10 flex items-center justify-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
-                                                <Route className="w-4 h-4" />
-                                                <span className="text-xs font-semibold">Open Saved Route</span>
-                                            </div>
-                                        )}
-                                    </button>
-                                )}
-
-                                <div className="flex items-start justify-between mb-5 relative z-10">
-                                    <div className="flex gap-4 items-start">
-                                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg", avatarStyle.bg, avatarStyle.text)}>
-                                            {getInitials(client.name)}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-white leading-none mb-1.5">{client.name}</h3>
-                                            <div className="text-sm text-muted-foreground flex items-start gap-1">
-                                                <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                                                <div className="flex flex-col leading-tight">
-                                                    <span className="text-gray-300">{street || client.address}</span>
-                                                    {cityZip && <span className="text-xs mt-0.5 opacity-70 uppercase tracking-wider">{cityZip}</span>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button className="text-muted-foreground hover:text-white transition-colors">
-                                        <Pencil className="w-4 h-4" />
-                                    </button>
-                                </div>
-
-                                {/* Profit Badge */}
-                                <div className="flex items-center gap-2 mb-3">
-                                    <ClientProfitBadge clientId={client.id} />
-                                    <span className="text-[11px] text-muted-foreground">
-                                        {client.billingType === 'Regular' ? `$${client.amount}/mo` : `$${client.amount}/cut`}
-                                    </span>
-                                </div>
-
-                                {isActiveMowing && activeSession && (
-                                    <div className="mb-4 py-2 border-y border-primary/20 flex items-center justify-center gap-2">
-                                        <Timer className="w-4 h-4 text-primary animate-pulse" />
-                                        <span className="text-sm font-bold text-primary tracking-widest uppercase">Mowing Now - </span>
-                                        <span className="text-sm font-bold font-mono text-white">
-                                            <InlineMowTimer
-                                                startTime={activeSession.startTime}
-                                                breakTimeTotal={activeSession.breakTimeTotal}
-                                                stuckTimeTotal={activeSession.stuckTimeTotal}
-                                                currentBreakOrStuckStartTime={activeSession.currentBreakOrStuckStartTime}
-                                                status={activeSession.status}
-                                                endTime={activeSession.endTime}
-                                            />
-                                        </span>
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-2 gap-px bg-white/5 rounded-xl overflow-hidden mb-4 border border-white/5 text-sm">
-                                    <div className="bg-[#151a17] p-3 flex flex-col justify-center">
-                                        <span className="text-[10px] text-primary/70 font-bold tracking-wider mb-1 uppercase">Phone</span>
-                                        <span className="text-gray-200 font-medium">{client.phone || 'N/A'}</span>
-                                    </div>
-                                    <div className="bg-[#151a17] p-3 flex flex-col justify-center overflow-hidden">
-                                        <span className="text-[10px] text-primary/70 font-bold tracking-wider mb-1 uppercase">Size</span>
-                                        <span className="text-gray-200 font-medium truncate">{client.sqft}</span>
-                                    </div>
-                                    <div className="bg-[#151a17] p-3 flex flex-col justify-center">
-                                        <span className="text-[10px] text-primary/70 font-bold tracking-wider mb-1 uppercase">Visits</span>
-                                        <span className="text-gray-200 font-medium">{totalVisits}</span>
-                                    </div>
-                                    <div className="bg-[#151a17] p-3 flex flex-col justify-center">
-                                        <span className="text-[10px] text-primary/70 font-bold tracking-wider mb-1 uppercase">Total Time</span>
-                                        <span className="text-gray-200 font-medium">{totalTimeStr}</span>
-                                    </div>
-                                    <div className="bg-[#151a17] p-3 flex flex-col justify-center">
-                                        <span className="text-[10px] text-primary/70 font-bold tracking-wider mb-1 uppercase">Stuck Time</span>
-                                        <span className="text-rose-400 font-medium">{totalStuckStr}</span>
-                                    </div>
-                                    <div className="bg-[#151a17] p-3 flex flex-col justify-center">
-                                        <span className="text-[10px] text-primary/70 font-bold tracking-wider mb-1 uppercase">Pause Time</span>
-                                        <span className="text-gray-400 font-medium">{totalBreakStr}</span>
-                                    </div>
-                                </div>
-
-                                <div className="mt-auto pt-2 flex items-center justify-between">
-                                    {daysSinceNum >= 0 ? (
-                                        <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap", daysSinceColor)}>
-                                            {daysSince}
-                                        </span>
-                                    ) : (
-                                        <span className="text-xs px-2.5 py-1 rounded-full font-medium text-muted-foreground bg-white/5">
-                                            Never
-                                        </span>
-                                    )}
-
-                                    {isActiveMowing ? (
-                                        <Button
-                                            onClick={handleCompleteMowing}
-                                            className="bg-white hover:bg-white/90 text-black font-bold shadow-[0_4px_15px_rgba(255,255,255,0.2)] transition-all active:scale-[0.97]"
-                                        >
-                                            Complete Mowing
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            onClick={() => handleStartMowing(client.id)}
-                                            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[0_4px_15px_rgba(170,255,0,0.2)] transition-all active:scale-[0.97]"
-                                        >
-                                            <Timer className="w-4 h-4 mr-2" />
-                                            Start Mowing
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
+                            <SwipeableClientCard
+                                key={client.id}
+                                client={client}
+                                stats={{
+                                    totalVisits: stats.totalVisits,
+                                    totalTimeStr: stats.totalTimeStr,
+                                    avgTime: stats.avgTime,
+                                    daysSince: stats.daysSince,
+                                    daysSinceNum: stats.daysSinceNum,
+                                    totalStuckStr: stats.totalStuckStr,
+                                    totalBreakStr: stats.totalBreakStr,
+                                }}
+                                profit={profit}
+                                isActiveMowing={isActiveMowing}
+                                activeSession={isActiveMowing && activeSession ? {
+                                    startTime: activeSession.startTime,
+                                    breakTimeTotal: activeSession.breakTimeTotal,
+                                    stuckTimeTotal: activeSession.stuckTimeTotal,
+                                    currentBreakOrStuckStartTime: activeSession.currentBreakOrStuckStartTime,
+                                    status: activeSession.status,
+                                    endTime: activeSession.endTime,
+                                } : null}
+                                avatarStyle={avatarStyle}
+                                onStartMowing={() => handleStartMowing(client.id)}
+                                onCompleteMowing={handleCompleteMowing}
+                                InlineMowTimer={InlineMowTimer}
+                            />
                         );
                     })}
                 </div>
             )}
         </main>
     );
-}
-
-function InlineMowTimer({ startTime, breakTimeTotal = 0, stuckTimeTotal = 0, status, endTime, currentBreakOrStuckStartTime = null }: { startTime: string, breakTimeTotal?: number, stuckTimeTotal?: number, status: string, endTime: string | null, currentBreakOrStuckStartTime?: string | null }) {
-    const [elapsed, setElapsed] = useState(0);
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (status === 'active') {
-            const start = new Date(startTime).getTime();
-            interval = setInterval(() => {
-                setElapsed(Math.floor((new Date().getTime() - start) / 1000) - breakTimeTotal - stuckTimeTotal);
-            }, 1000);
-        } else {
-            const start = new Date(startTime).getTime();
-            const frozenEnd = endTime
-                ? new Date(endTime).getTime()
-                : (currentBreakOrStuckStartTime ? new Date(currentBreakOrStuckStartTime).getTime() : new Date().getTime());
-            setElapsed(Math.floor((frozenEnd - start) / 1000) - breakTimeTotal - stuckTimeTotal);
-        }
-        return () => clearInterval(interval);
-    }, [startTime, breakTimeTotal, stuckTimeTotal, status, endTime, currentBreakOrStuckStartTime]);
-
-    const h = Math.floor(elapsed / 3600);
-    const m = Math.floor((elapsed % 3600) / 60);
-    const s = elapsed % 60;
-    const timeStr = h > 0
-        ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-        : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-
-    return <span>{timeStr}</span>;
 }
