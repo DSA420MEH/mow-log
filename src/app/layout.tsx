@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
-import { Syne, Plus_Jakarta_Sans } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 import { ActiveMowBanner } from "@/components/ActiveMowBanner";
 import { PWAProvider } from "next-pwa-pack";
-import { WebMCPProvider } from "@/components/WebMCPProvider";
 
-const fontHeading = Syne({
-  variable: "--font-heading",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const fontBody = Plus_Jakarta_Sans({
-  variable: "--font-body",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -31,13 +30,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${fontHeading.variable} ${fontBody.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
         {isDev ? (
           <div className="relative flex min-h-screen flex-col">
-            <WebMCPProvider>
-              <div className="flex-1">{children}</div>
-            </WebMCPProvider>
+            <div className="flex-1">{children}</div>
             <ActiveMowBanner />
             <BottomNav />
             <script dangerouslySetInnerHTML={{
@@ -54,9 +51,7 @@ export default function RootLayout({
         ) : (
           <PWAProvider>
             <div className="relative flex min-h-screen flex-col">
-              <WebMCPProvider>
-                <div className="flex-1">{children}</div>
-              </WebMCPProvider>
+              <div className="flex-1">{children}</div>
               <ActiveMowBanner />
               <BottomNav />
             </div>

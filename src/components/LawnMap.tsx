@@ -350,91 +350,89 @@ export default function LawnMap({
 
     // ─── Render ─────────────────────────────────
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
             {/* Address Search */}
-            <div className="flex gap-2 relative z-10 w-full">
+            <div className="flex gap-2">
                 <input
                     type="text"
-                    placeholder="Enter an address to map..."
+                    placeholder="Enter address..."
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && searchAddress()}
-                    className="flex-1 px-4 py-3 h-12 rounded-xl bg-card border border-white/5 text-white text-sm placeholder:text-white/30 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] transition-all"
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-foreground text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
                 />
                 <button
                     onClick={searchAddress}
                     disabled={searching}
-                    className="px-6 h-12 rounded-xl bg-primary text-black font-bold text-sm tracking-wide hover:bg-primary/90 disabled:opacity-50 shadow-[0_4px_15px_rgba(195,255,0,0.2)] transition-all active:scale-[0.98]"
+                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-50"
                 >
-                    {searching ? "..." : "Launch"}
+                    {searching ? "..." : "Go"}
                 </button>
             </div>
 
             {/* Draw Mode Toggle */}
-            <div className="flex gap-2 relative z-10">
+            <div className="flex gap-2">
                 <button
                     onClick={() => setDrawMode("lawn")}
-                    className={`flex-1 py-3 rounded-xl text-sm font-bold tracking-wide transition-all shadow-sm ${drawMode === "lawn"
-                        ? "bg-primary/15 text-primary border border-primary/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] ring-1 ring-primary/20"
-                        : "bg-card text-white/50 border border-white/5 hover:text-white/80 hover:bg-white/5"
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${drawMode === "lawn"
+                        ? "bg-primary/20 text-primary border border-primary/40"
+                        : "bg-white/[0.03] text-muted-foreground border border-white/10 hover:border-white/20"
                         }`}
                 >
-                    <span className="mr-2 opacity-80">🌿</span> Draw Lawn
+                    🌿 Draw Lawn
                 </button>
                 <button
                     onClick={() => setDrawMode("obstacle")}
-                    className={`flex-1 py-3 rounded-xl text-sm font-bold tracking-wide transition-all shadow-sm ${drawMode === "obstacle"
-                        ? "bg-red-500/15 text-red-400 border border-red-500/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] ring-1 ring-red-500/20"
-                        : "bg-card text-white/50 border border-white/5 hover:text-white/80 hover:bg-white/5"
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${drawMode === "obstacle"
+                        ? "bg-red-500/20 text-red-400 border border-red-500/40"
+                        : "bg-white/[0.03] text-muted-foreground border border-white/10 hover:border-white/20"
                         }`}
                 >
-                    <span className="mr-2 opacity-80">🏠</span> Obstacle
+                    🏠 Mark Obstacle
                 </button>
                 {(lawnPolygon || obstacles.length > 0) && (
                     <button
                         onClick={clearAll}
-                        className="px-4 py-3 rounded-xl bg-card text-white/40 border border-white/5 text-sm hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all font-bold group"
+                        className="px-3 py-2 rounded-lg bg-white/[0.03] text-muted-foreground border border-white/10 text-sm hover:text-red-400 hover:border-red-500/30 transition-all"
                         title="Clear all"
                     >
-                        <span className="group-hover:scale-110 transition-transform block">✕</span>
+                        ✕
                     </button>
                 )}
             </div>
 
             {/* Mode hint */}
-            <div className={`px-4 py-2.5 rounded-xl text-xs font-medium tracking-wide border shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)] ${drawMode === "lawn"
-                ? "bg-primary/5 text-primary/80 border-primary/10"
-                : "bg-red-500/5 text-red-400/80 border-red-500/10"
+            <div className={`px-3 py-1.5 rounded-lg text-[11px] ${drawMode === "lawn"
+                ? "bg-primary/5 text-primary/70 border border-primary/20"
+                : "bg-red-500/5 text-red-400/70 border border-red-500/20"
                 }`}>
                 {drawMode === "lawn"
-                    ? "Draw the outer lawn boundary using the polygon tool (top-right)"
+                    ? "Draw the outer lawn boundary using the polygon tool ▯ in the top-right"
                     : `Mark obstacles (house, driveway, garden beds) to avoid · ${obstacles.length} marked`}
             </div>
 
             {/* Map */}
             <div
                 ref={mapContainerRef}
-                className="w-full h-[450px] md:h-[500px] rounded-[1.5rem] overflow-hidden border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.3)] bg-card"
+                className="w-full h-[350px] rounded-xl overflow-hidden border border-white/10"
                 style={{ zIndex: 1 }}
             />
 
             {/* Info Bar */}
             {areaSqFt !== null && (
-                <div className="flex items-center justify-between p-5 rounded-2xl bg-card border border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,0.02)] animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-primary/10 border border-primary/30">
                     <div>
-                        <p className="text-[10px] uppercase text-white/50 tracking-[0.2em] font-bold mb-1 ml-0.5">Lawn Area</p>
-                        <p className="text-3xl font-heading font-bold text-white tracking-tight">{areaSqFt.toFixed(0)} sq ft</p>
-                        <p className="text-xs text-primary/70 font-medium tracking-wide mt-1 bg-primary/10 inline-block px-2 py-0.5 rounded-md border border-primary/20">
-                            {(areaSqFt / 10.7639).toFixed(0)} m² · {obstacles.length} obstacle{obstacles.length !== 1 ? "s" : ""}
+                        <p className="text-[11px] uppercase text-primary/70 tracking-widest font-medium">Lawn Area</p>
+                        <p className="text-xl font-bold text-white">{areaSqFt.toFixed(0)} sq ft</p>
+                        <p className="text-[11px] text-muted-foreground">
+                            {(areaSqFt / 10.7639).toFixed(0)} m² · {obstacles.length} obstacle{obstacles.length !== 1 ? "s" : ""} marked
                         </p>
                     </div>
                     {routePlan && showRoute && (
                         <div className="text-right">
-                            <p className="text-[10px] uppercase text-white/50 tracking-[0.2em] font-bold mb-1 mr-0.5">Est. Time</p>
-                            <p className="text-3xl font-heading font-bold text-primary tracking-tight">{routePlan.estimatedTimeMins.toFixed(0)}<span className="text-xl text-primary/70 ml-1">min</span></p>
-                            <p className="text-xs text-white/40 font-medium tracking-wide mt-1">
-                                {routePlan.stripes.length} stripes · {routePlan.bestAngleDeg}°
-                            </p>
+                            <p className="text-[11px] uppercase text-primary/70 tracking-widest font-medium">Est. Time</p>
+                            <p className="text-lg font-bold text-white">{routePlan.estimatedTimeMins.toFixed(0)} min</p>
+                            <p className="text-[11px] text-muted-foreground">{routePlan.stripes.length} stripes · {routePlan.bestAngleDeg}°</p>
                         </div>
                     )}
                 </div>
@@ -442,16 +440,15 @@ export default function LawnMap({
 
             {/* Mower Settings */}
             {areaSqFt !== null && (
-                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-                    <div className="space-y-2">
-                        <label className="text-[10px] uppercase text-white/50 tracking-widest font-bold ml-1">
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className="text-[11px] uppercase text-muted-foreground tracking-widest font-medium mb-1 block">
                             Deck Width
                         </label>
                         <select
                             value={deckWidth}
                             onChange={(e) => setDeckWidth(Number(e.target.value))}
-                            className="w-full px-4 h-12 rounded-xl bg-card border border-white/10 text-white text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] appearance-none cursor-pointer"
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+                            className="w-full px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-foreground text-sm focus:border-primary/50 focus:outline-none"
                         >
                             <option value={21}>21&quot; (Push)</option>
                             <option value={30}>30&quot; (Wide Push)</option>
@@ -462,15 +459,14 @@ export default function LawnMap({
                             <option value={60}>60&quot; (Commercial)</option>
                         </select>
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] uppercase text-white/50 tracking-widest font-bold ml-1">
-                            Discharge Mode
+                    <div>
+                        <label className="text-[11px] uppercase text-muted-foreground tracking-widest font-medium mb-1 block">
+                            Discharge Side
                         </label>
                         <select
                             value={discharge}
                             onChange={(e) => setDischarge(e.target.value as DischargeMode)}
-                            className="w-full px-4 h-12 rounded-xl bg-card border border-white/10 text-white text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] appearance-none cursor-pointer"
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+                            className="w-full px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-foreground text-sm focus:border-primary/50 focus:outline-none"
                         >
                             <option value="right">Right Side</option>
                             <option value="left">Left Side</option>
@@ -485,53 +481,53 @@ export default function LawnMap({
             {areaSqFt !== null && (
                 <button
                     onClick={generateRoute}
-                    className="w-full h-14 mt-2 rounded-[1rem] bg-primary text-black font-bold text-base tracking-wide shadow-[0_4px_20px_rgba(195,255,0,0.3)] hover:bg-primary/90 transition-all active:scale-[0.98] animate-in fade-in zoom-in-95 duration-500 delay-100"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-green-500 text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity"
                 >
-                    {showRoute ? "Regenerate optimal route" : "Generate Optimal Mowing Route"}
+                    {showRoute ? "Regenerate Route" : "Generate Mowing Route"}
                 </button>
             )}
 
             {/* Route Stats */}
             {routePlan && showRoute && (
-                <div className="grid grid-cols-4 gap-3 animate-in fade-in slide-in-from-bottom-5 duration-500">
-                    <div className="text-center p-3 rounded-2xl border border-white/5 bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)]">
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Dist</p>
-                        <p className="text-sm font-heading font-bold text-white">{routePlan.estimatedDistanceMeters.toFixed(0)}m</p>
+                <div className="grid grid-cols-4 gap-2">
+                    <div className="text-center p-2.5 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <p className="text-[10px] text-muted-foreground uppercase">Distance</p>
+                        <p className="text-sm font-bold text-foreground">{routePlan.estimatedDistanceMeters.toFixed(0)}m</p>
                     </div>
-                    <div className="text-center p-3 rounded-2xl border border-white/5 bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)]">
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Stripes</p>
-                        <p className="text-sm font-heading font-bold text-white">{routePlan.stripes.length}</p>
+                    <div className="text-center p-2.5 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <p className="text-[10px] text-muted-foreground uppercase">Stripes</p>
+                        <p className="text-sm font-bold text-foreground">{routePlan.stripes.length}</p>
                     </div>
-                    <div className="text-center p-3 rounded-2xl border border-white/5 bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)]">
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Zones</p>
-                        <p className="text-sm font-heading font-bold text-white">{routePlan.cellCount}</p>
+                    <div className="text-center p-2.5 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <p className="text-[10px] text-muted-foreground uppercase">Zones</p>
+                        <p className="text-sm font-bold text-foreground">{routePlan.cellCount}</p>
                     </div>
-                    <div className="text-center p-3 rounded-2xl border border-white/5 bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)]">
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Angle</p>
-                        <p className="text-sm font-heading font-bold text-white">{routePlan.bestAngleDeg}°</p>
+                    <div className="text-center p-2.5 rounded-xl border border-white/5 bg-white/[0.02]">
+                        <p className="text-[10px] text-muted-foreground uppercase">Angle</p>
+                        <p className="text-sm font-bold text-foreground">{routePlan.bestAngleDeg}°</p>
                     </div>
                 </div>
             )}
 
             {/* Save to Client */}
             {routePlan && showRoute && (
-                <div className="relative animate-in fade-in slide-in-from-bottom-6 duration-500 py-2">
+                <div className="relative">
                     {savedSuccess ? (
-                        <div className="w-full h-14 flex items-center justify-center rounded-[1rem] bg-primary/20 border border-primary/40 text-primary font-bold text-sm tracking-wide shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-                            <span className="mr-2">✓</span> Route Saved Successfully
+                        <div className="w-full py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold text-sm text-center">
+                            ✓ Route saved to client!
                         </div>
                     ) : (
                         <>
                             <button
                                 onClick={() => setShowClientPicker(!showClientPicker)}
-                                className="w-full h-14 rounded-[1rem] bg-card border border-white/10 text-white font-bold text-sm hover:border-primary/40 hover:bg-white/5 transition-all tracking-wide shadow-[0_4px_12px_rgba(0,0,0,0.2)] flex items-center justify-center gap-2 group"
+                                className="w-full py-3 rounded-xl bg-white/[0.06] border border-white/10 text-foreground font-semibold text-sm hover:border-primary/40 hover:bg-primary/5 transition-all"
                             >
-                                <span className="group-hover:scale-110 transition-transform">📸</span> Save Route to Address
+                                📸 Save Route to Client
                             </button>
                             {showClientPicker && (
-                                <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-[#151a17] border border-white/10 rounded-[1.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.6)] overflow-hidden max-h-60 overflow-y-auto custom-scrollbar backdrop-blur-2xl">
+                                <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[#1a201c] border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
                                     {clients.length === 0 ? (
-                                        <div className="p-6 text-sm font-medium text-white/40 text-center">No addresses saved yet. <br /> Add one on the Addresses tab.</div>
+                                        <div className="p-4 text-sm text-muted-foreground text-center">No clients yet. Add one on the Addresses tab.</div>
                                     ) : (
                                         clients.map((client) => (
                                             <button
@@ -572,18 +568,14 @@ export default function LawnMap({
                                                     setSavingToClient(null);
                                                 }}
                                                 disabled={savingToClient !== null}
-                                                className="w-full px-5 py-4 text-left hover:bg-primary/10 transition-all border-b border-white/5 last:border-0 flex items-center justify-between group"
+                                                className="w-full px-4 py-3 text-left text-sm hover:bg-primary/10 transition-colors border-b border-white/5 last:border-0 flex items-center justify-between"
                                             >
-                                                <div className="flex-1 min-w-0 pr-4">
-                                                    <span className="text-white font-bold block truncate group-hover:text-primary transition-colors">{client.name}</span>
-                                                    <span className="text-white/40 text-[11px] block truncate mt-0.5">{client.address}</span>
+                                                <div>
+                                                    <span className="text-white font-medium">{client.name}</span>
+                                                    <span className="text-muted-foreground ml-2 text-xs">{client.address}</span>
                                                 </div>
-                                                {savingToClient === client.id ? (
-                                                    <span className="text-[10px] text-primary font-bold uppercase tracking-widest animate-pulse whitespace-nowrap">Saving...</span>
-                                                ) : (
-                                                    <span className="text-white/20 group-hover:text-primary/70 transition-colors opacity-0 group-hover:opacity-100">
-                                                        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                                    </span>
+                                                {savingToClient === client.id && (
+                                                    <span className="text-primary text-xs animate-pulse">Saving...</span>
                                                 )}
                                             </button>
                                         ))

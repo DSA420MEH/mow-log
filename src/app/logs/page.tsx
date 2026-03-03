@@ -10,9 +10,8 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, Fuel, Wrench, Play, Square, Pause, Plus, Scan, Trash2, DollarSign, Settings2, CheckCircle2, AlertTriangle, Leaf, Scissors, Droplets } from "lucide-react";
+import { Clock, Fuel, Wrench, Play, Square, Pause, Plus, Scan, Trash2, TrendingUp, TrendingDown, DollarSign, Settings2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useMemo } from "react";
-import { LawnEventForms } from "@/components/LawnEventForms";
 
 // Daily profit summary component
 function DailyProfitCard() {
@@ -26,34 +25,33 @@ function DailyProfitCard() {
     const fmt = (n: number) => (n < 0 ? "-$" : "$") + Math.abs(n).toFixed(2);
 
     return (
-        <Card className="border-white/10 bg-card rounded-[1.5rem] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] animate-in fade-in slide-in-from-bottom-3 duration-500 overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
-            <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-4">
+        <Card className="glass-card border-white/10 bg-white/[0.02]">
+            <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
                     <DollarSign className="w-4 h-4 text-primary" />
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold">Today&apos;s Summary</span>
+                    <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">Today&apos;s Summary</span>
                 </div>
-                <div className="grid grid-cols-4 gap-3">
-                    <div className="text-center p-3 rounded-2xl bg-[#0a0f0d] border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Revenue</p>
-                        <p className="text-base font-heading font-black tracking-tight text-white">{fmt(daily.revenue)}</p>
+                <div className="grid grid-cols-4 gap-2">
+                    <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                        <p className="text-[10px] text-muted-foreground uppercase">Revenue</p>
+                        <p className="text-sm font-bold text-primary">{fmt(daily.revenue)}</p>
                     </div>
-                    <div className="text-center p-3 rounded-2xl bg-[#0a0f0d] border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Gas</p>
-                        <p className="text-base font-heading font-black tracking-tight text-orange-400">{fmt(daily.gasCost)}</p>
+                    <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                        <p className="text-[10px] text-muted-foreground uppercase">Gas</p>
+                        <p className="text-sm font-bold text-orange-400">{fmt(daily.gasCost)}</p>
                     </div>
-                    <div className="text-center p-3 rounded-2xl bg-[#0a0f0d] border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Maint.</p>
-                        <p className="text-base font-heading font-black tracking-tight text-red-400">{fmt(daily.maintCost)}</p>
+                    <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                        <p className="text-[10px] text-muted-foreground uppercase">Maint.</p>
+                        <p className="text-sm font-bold text-red-400">{fmt(daily.maintCost)}</p>
                     </div>
-                    <div className="text-center p-3 rounded-2xl bg-[#0a0f0d] border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Profit</p>
-                        <p className={`text-base font-heading font-black tracking-tight ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                        <p className="text-[10px] text-muted-foreground uppercase">Profit</p>
+                        <p className={`text-sm font-bold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                             {fmt(daily.profit)}
                         </p>
                     </div>
                 </div>
-                <p className="text-[10px] text-white/40 mt-3 text-center uppercase tracking-widest font-bold">
+                <p className="text-[10px] text-muted-foreground mt-2 text-center">
                     {daily.sessionsCount} session{daily.sessionsCount !== 1 ? 's' : ''} completed today
                 </p>
             </CardContent>
@@ -64,15 +62,8 @@ function DailyProfitCard() {
 export default function LogsPage() {
     const {
         sessions, activeWorkdaySessionId, gasLogs, maintenanceLogs,
-        mowingEvents, wateringEvents, fertilizingEvents,
         startWorkdaySession, endWorkdaySession, toggleWorkdayBreak, addGasLog, addMaintenanceLog
     } = useStore();
-
-    // Combine and sort events
-    const recentLawnEvents = useMemo(() => {
-        const combined = [...mowingEvents, ...wateringEvents, ...fertilizingEvents];
-        return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
-    }, [mowingEvents, wateringEvents, fertilizingEvents]);
 
     const activeSession = sessions.find(s => s.id === activeWorkdaySessionId);
 
@@ -146,54 +137,52 @@ export default function LogsPage() {
     if (!isMounted) return null;
 
     return (
-        <main className="p-4 pb-32 min-h-screen space-y-6">
-            <div className="pt-6 mb-4 animate-in fade-in slide-in-from-bottom-1">
-                <h1 className="text-4xl font-heading font-black tracking-tighter text-white mb-2">
-                    <span className="text-primary drop-shadow-[0_0_15px_rgba(195,255,0,0.3)]">Operational</span> Logs
-                </h1>
-                <p className="text-white/50 text-xs font-medium uppercase tracking-[0.2em]">Track time, fuel, and repairs.</p>
+        <main className="p-4 pb-28 min-h-screen space-y-6">
+            <div className="pt-4 mb-4">
+                <h1 className="text-3xl font-extrabold tracking-tight text-white mb-1"><span className="text-primary">Operational</span> Logs</h1>
+                <p className="text-muted-foreground text-sm">Track time, fuel, and repairs.</p>
             </div>
 
             {/* WORK TIMER CARD */}
-            <Card className="border-white/10 bg-card shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.05)] rounded-[1.5rem] overflow-hidden relative animate-in fade-in slide-in-from-bottom-2 duration-500 delay-100">
-                <div className={`absolute top-0 left-0 w-full h-1 ${activeSession?.status === 'active' ? 'bg-primary' : 'bg-white/20'}`}></div>
-                <CardHeader className="pb-4 pt-6 px-6">
-                    <CardTitle className="text-[10px] text-white/50 font-bold uppercase tracking-[0.2em] flex items-center justify-between">
-                        <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> Mowing Session</span>
-                        {activeSession && <Badge variant={activeSession.status === 'active' ? 'default' : 'secondary'} className={`${activeSession.status === 'active' ? 'bg-primary/20 text-primary border-primary/30 shadow-[0_0_10px_rgba(195,255,0,0.2)] animate-pulse' : 'bg-white/5 text-white/40 border-white/10'} text-[9px] uppercase tracking-widest rounded-full px-2 py-0.5`}>
-                            {activeSession.status}
+            <Card className="glass-card border-primary/30 bg-card/40 overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center justify-between">
+                        <span className="flex items-center text-foreground"><Clock className="w-5 h-5 mr-2 text-primary" /> Mowing Session</span>
+                        {activeSession && <Badge variant={activeSession.status === 'active' ? 'default' : 'secondary'} className={activeSession.status === 'active' ? 'bg-primary text-primary-foreground animate-pulse' : ''}>
+                            {activeSession.status.toUpperCase()}
                         </Badge>}
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="px-6 pb-6">
+                <CardContent>
                     {!activeSession ? (
-                        <div className="text-center py-8">
-                            <p className="text-white/40 text-sm mb-6 font-medium">No active session.</p>
-                            <Button onClick={() => startWorkdaySession()} className="w-full bg-primary hover:bg-primary/90 text-black font-bold h-14 rounded-2xl shadow-[0_5px_15px_rgba(195,255,0,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98]">
-                                <Play className="w-5 h-5 mr-2" /> Start General Clock-In
+                        <div className="text-center py-6">
+                            <p className="text-muted-foreground mb-4">No active session.</p>
+                            <Button onClick={() => startWorkdaySession()} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold">
+                                <Play className="w-4 h-4 mr-2" /> Start General Clock-In
                             </Button>
                         </div>
                     ) : (
-                        <div className="space-y-8">
+                        <div className="space-y-6">
                             <div className="text-center">
-                                <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-2">
+                                <p className="text-sm font-semibold text-primary/80 uppercase tracking-widest mb-1">
                                     General Work
                                 </p>
-                                <div className="text-7xl font-heading font-black tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                <div className="text-6xl font-mono font-bold tracking-tighter text-white drop-shadow-[0_0_15px_rgba(170,255,0,0.4)]">
                                     {formatTime(elapsed)}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <Button
+                                    variant={activeSession.status === 'active' ? 'outline' : 'default'}
                                     onClick={() => toggleWorkdayBreak()}
-                                    className={`h-12 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] ${activeSession.status === 'active' ? "bg-white/5 hover:bg-white/10 text-white border border-white/10" : "bg-primary text-black shadow-[0_5px_15px_rgba(195,255,0,0.3)]"}`}
+                                    className={activeSession.status === 'active' ? "border-white/20 text-foreground" : "bg-primary text-primary-foreground"}
                                 >
-                                    {activeSession.status === 'active' ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                                    {activeSession.status === 'active' ? 'Pause' : 'Resume'}
+                                    <Pause className="w-4 h-4 mr-2" /> {activeSession.status === 'active' ? 'Start Break' : 'Resume Work'}
                                 </Button>
-                                <Button onClick={() => endWorkdaySession()} className="h-12 rounded-2xl font-bold bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                                    <Square className="w-4 h-4 mr-2" /> End
+                                <Button onClick={() => endWorkdaySession()} variant="destructive" className="bg-destructive hover:bg-destructive/90 text-white font-bold">
+                                    <Square className="w-4 h-4 mr-2" /> End Session
                                 </Button>
                             </div>
                         </div>
@@ -204,108 +193,59 @@ export default function LogsPage() {
             {/* DAILY PROFIT SUMMARY */}
             <DailyProfitCard />
 
-            {/* LAWN EVENTS SECTION */}
-            <Card className="border-white/10 bg-card rounded-[1.5rem] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] animate-in fade-in slide-in-from-bottom-3 duration-500 delay-150">
-                <CardHeader className="pb-4 pt-5 px-5 border-b border-white/5 bg-white/[0.02]">
-                    <CardTitle className="text-[10px] text-white/50 font-bold uppercase tracking-[0.2em] flex items-center justify-between">
-                        <span className="flex items-center gap-2"><Leaf className="w-4 h-4 text-emerald-500" /> Lawn Events</span>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 px-5 pt-5 pb-5">
-
-                    {recentLawnEvents.length > 0 ? (
-                        <div className="space-y-3">
-                            {recentLawnEvents.map(event => {
-                                const isMow = event.type === 'mow';
-                                const isWater = event.type === 'water';
-                                return (
-                                    <div key={event.id} className="flex justify-between items-start p-4 rounded-2xl bg-[#0a0f0d] border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                {isMow ? <Scissors className="w-3.5 h-3.5 text-primary" /> : isWater ? <Droplets className="w-3.5 h-3.5 text-blue-400" /> : <Leaf className="w-3.5 h-3.5 text-emerald-400" />}
-                                                <p className="font-bold text-white text-sm capitalize">{event.type} Event</p>
-                                            </div>
-                                            <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest mt-0.5 max-w-[200px] truncate">
-                                                {isMow && `${(event as any).cutHeightInches}" Cut | ${(event as any).grassBagged ? 'Bagged' : 'Mulched'}`}
-                                                {isWater && `${(event as any).durationMinutes} mins | ${(event as any).waterAmountInches || '?'} inches`}
-                                                {!isMow && !isWater && `${(event as any).productName} | ${(event as any).npkRatio}`}
-                                            </p>
-                                        </div>
-                                        <p className="font-bold text-xs text-white/50">{new Date(event.date).toLocaleDateString()}</p>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    ) : (
-                        <div className="text-center py-6 border border-dashed border-white/10 rounded-2xl bg-[#0a0f0d]">
-                            <p className="text-xs text-white/40 font-medium">No lawn events logged yet.</p>
-                        </div>
-                    )}
-
-                    <LawnEventForms />
-                </CardContent>
-            </Card>
-
             {/* GAS LOG CARD */}
-            <Card className="border-white/10 bg-card rounded-[1.5rem] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
-                <CardHeader className="pb-4 pt-5 px-5 border-b border-white/5 bg-white/[0.02]">
-                    <CardTitle className="text-[10px] text-white/50 font-bold uppercase tracking-[0.2em] flex items-center justify-between">
-                        <span className="flex items-center gap-2"><Fuel className="w-4 h-4 text-primary" /> Fuel Log</span>
+            <Card className="glass-card border-white/10 bg-card/20">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center text-foreground">
+                        <Fuel className="w-5 h-5 mr-2 text-primary" /> Fuel Log
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-5 px-5 pt-5 pb-5">
+                <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                         <Dialog open={gasOpen} onOpenChange={setGasOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" className="w-full h-12 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white font-bold">
-                                    <Plus className="w-4 h-4 mr-2" /> Manual
+                                <Button variant="outline" className="w-full border-white/20 bg-background/50 hover:bg-white/10">
+                                    <Plus className="w-4 h-4 mr-2" /> Manual Log
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-6">
-                                <DialogTitle className="text-xl font-heading font-black text-white">Log Fuel Manual</DialogTitle>
-                                {/* @ts-ignore - WebMCP experimental attributes */}
-                                <form
-                                    className="space-y-5 pt-4"
-                                    tool-name="log_gas_expense_html"
-                                    tool-description="Submit a manual fuel log entry for the mowing equipment by providing liters and price per liter."
-                                    tool-autosubmit="true"
-                                    onSubmit={(e) => { e.preventDefault(); handleGasSave(); }}
-                                >
+                            <DialogContent className="sm:max-w-md bg-card/90 backdrop-blur-xl border-primary/30">
+                                <DialogTitle>Log Fuel Manual</DialogTitle>
+                                <div className="space-y-4 pt-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Liters (L)</Label>
-                                            <Input name="liters" type="number" value={liters} onChange={e => setLiters(e.target.value)} className="bg-[#0a0f0d] border-white/10 h-14 rounded-xl text-lg font-bold" placeholder="0.00" />
+                                            <Label>Liters (L)</Label>
+                                            <Input type="number" value={liters} onChange={e => setLiters(e.target.value)} className="bg-input/50" placeholder="0.00" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Price per L ($)</Label>
-                                            <Input name="pricePerLiter" type="number" value={pricePerLiter} onChange={e => setPricePerLiter(e.target.value)} className="bg-[#0a0f0d] border-white/10 h-14 rounded-xl text-lg font-bold" placeholder="1.50" />
+                                            <Label>Price per L ($)</Label>
+                                            <Input type="number" value={pricePerLiter} onChange={e => setPricePerLiter(e.target.value)} className="bg-input/50" placeholder="1.50" />
                                         </div>
                                     </div>
-                                    <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20 flex justify-between items-center shadow-[inset_0_1px_1px_rgba(195,255,0,0.1)]">
-                                        <span className="text-[10px] uppercase tracking-widest font-bold text-primary/80">Estimated</span>
-                                        <span className="font-heading font-black text-3xl text-primary">${((parseFloat(liters) || 0) * (parseFloat(pricePerLiter) || 0)).toFixed(2)}</span>
+                                    <div className="p-3 bg-primary/10 rounded-lg border border-primary/20 flex justify-between items-center">
+                                        <span className="text-sm text-primary">Total Estimated:</span>
+                                        <span className="font-bold text-lg text-primary">${((parseFloat(liters) || 0) * (parseFloat(pricePerLiter) || 0)).toFixed(2)}</span>
                                     </div>
-                                    <Button type="submit" className="w-full h-14 rounded-xl bg-primary hover:bg-primary/90 text-black font-bold text-base shadow-[0_5px_15px_rgba(195,255,0,0.3)]">Save Gas Log</Button>
-                                </form>
+                                    <Button onClick={handleGasSave} className="w-full bg-primary text-primary-foreground">Save Gas Log</Button>
+                                </div>
                             </DialogContent>
                         </Dialog>
 
-                        <Button className="w-full h-12 rounded-xl bg-white text-black font-bold hover:bg-white/90">
-                            <Scan className="w-4 h-4 mr-2" /> Scan Pump
+                        <Button variant="secondary" className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80">
+                            <Scan className="w-4 h-4 mr-2" /> Scan Pump (AI)
                         </Button>
                     </div>
 
                     {gasLogs.length > 0 && (
-                        <div className="space-y-3 mt-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-2 mt-4 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                             {gasLogs.slice().reverse().slice(0, 3).map(log => (
-                                <div key={log.id} className="flex justify-between items-center p-4 rounded-2xl bg-[#0a0f0d] border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
+                                <div key={log.id} className="flex justify-between items-center p-3 rounded-lg bg-black/30 text-sm">
                                     <div>
-                                        <p className="font-bold text-white text-sm">{new Date(log.date).toLocaleDateString()}</p>
-                                        <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest mt-0.5">{log.liters.toFixed(2)}L @ ${log.pricePerLiter.toFixed(2)}/L</p>
+                                        <p className="font-semibold text-foreground">{new Date(log.date).toLocaleDateString()}</p>
+                                        <p className="text-xs text-muted-foreground">{log.liters.toFixed(2)}L @ ${log.pricePerLiter.toFixed(2)}/L</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="font-heading font-black text-lg text-primary">${log.total.toFixed(2)}</p>
-                                        {log.isAiScanned && <Badge className="text-[8px] uppercase tracking-widest px-1.5 py-0 mt-1 bg-primary/20 text-primary border border-primary/30">AI</Badge>}
+                                        <p className="font-bold text-primary">${log.total.toFixed(2)}</p>
+                                        {log.isAiScanned && <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 mt-1 border-primary/40 text-primary">AI SCANNED</Badge>}
                                     </div>
                                 </div>
                             ))}
@@ -315,77 +255,77 @@ export default function LogsPage() {
             </Card>
 
             {/* MAINTENANCE LOG CARD */}
-            <Card className="border-white/10 bg-card rounded-[1.5rem] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] animate-in fade-in slide-in-from-bottom-5 duration-500 delay-300">
-                <CardHeader className="pb-4 pt-5 px-5 border-b border-white/5 bg-white/[0.02]">
-                    <CardTitle className="text-[10px] text-white/50 font-bold uppercase tracking-[0.2em] flex items-center justify-between">
-                        <span className="flex items-center gap-2"><Wrench className="w-4 h-4 text-primary" /> Repairs & Maint.</span>
+            <Card className="glass-card border-white/10 bg-card/20">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center text-foreground">
+                        <Wrench className="w-5 h-5 mr-2 text-primary" /> Repairs & Maint.
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="px-5 pb-5 pt-5">
+                <CardContent>
                     <Dialog open={maintOpen} onOpenChange={setMaintOpen}>
                         <DialogTrigger asChild>
-                            <Button className="w-full h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 font-bold transition-all">
-                                <Plus className="w-4 h-4 mr-2" /> Log Maintenance
+                            <Button variant="outline" className="w-full border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary">
+                                <Plus className="w-4 h-4 mr-2" /> Log Maintenance Event
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
-                            <DialogTitle className="text-xl font-heading font-black text-white">Log Maintenance</DialogTitle>
-                            <div className="space-y-6 pt-4">
+                        <DialogContent className="sm:max-w-md bg-card/90 backdrop-blur-xl border-primary/30 max-h-[80vh] overflow-y-auto">
+                            <DialogTitle>Log Maintenance</DialogTitle>
+                            <div className="space-y-4 pt-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Description / Issue</Label>
-                                    <Input value={mDescription} onChange={e => setMDescription(e.target.value)} className="bg-[#0a0f0d] border-white/10 h-14 rounded-xl text-sm" placeholder="Changed mower blades" />
+                                    <Label>Description / Issue</Label>
+                                    <Input value={mDescription} onChange={e => setMDescription(e.target.value)} className="bg-input/50" placeholder="Changed mower blades" />
                                 </div>
 
-                                <div className="space-y-3 pt-4 border-t border-white/10">
-                                    <Label className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Parts Replaced & Costs</Label>
+                                <div className="space-y-2 pt-2 border-t border-white/10">
+                                    <Label>Parts Replaced & Costs</Label>
                                     {mParts.map((part, index) => (
                                         <div key={index} className="flex gap-2 items-center">
                                             <Input value={part.name} onChange={e => {
                                                 const newParts = [...mParts];
                                                 newParts[index].name = e.target.value;
                                                 setMParts(newParts);
-                                            }} className="bg-[#0a0f0d] border-white/10 h-12 rounded-xl text-sm flex-[2]" placeholder="Blade set" />
+                                            }} className="bg-input/50 flex-[2]" placeholder="Blade set" />
                                             <Input type="number" value={part.cost} onChange={e => {
                                                 const newParts = [...mParts];
                                                 newParts[index].cost = e.target.value;
                                                 setMParts(newParts);
-                                            }} className="bg-[#0a0f0d] border-white/10 h-12 rounded-xl text-sm flex-[1]" placeholder="$0.00" />
+                                            }} className="bg-input/50 flex-[1]" placeholder="$0.00" />
                                             <Button variant="ghost" size="icon" onClick={() => {
                                                 if (mParts.length > 1) {
                                                     setMParts(mParts.filter((_, i) => i !== index));
                                                 }
-                                            }} className="text-white/30 hover:text-red-400 shrink-0 h-12 w-12 rounded-xl bg-[#0a0f0d] border border-white/5">
+                                            }} className="text-muted-foreground hover:text-destructive shrink-0">
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
                                     ))}
-                                    <Button variant="ghost" size="sm" onClick={() => setMParts([...mParts, { name: "", cost: "" }])} className="text-primary hover:text-primary/80 mt-2 text-xs font-bold w-full h-10 border border-dashed border-primary/30 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors">
-                                        <Plus className="w-3 h-3 mr-2" /> Add Part
+                                    <Button variant="ghost" size="sm" onClick={() => setMParts([...mParts, { name: "", cost: "" }])} className="text-primary hover:text-primary/80 mt-2 text-xs">
+                                        <Plus className="w-3 h-3 mr-1" /> Add Part
                                     </Button>
                                 </div>
 
-                                <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex justify-between items-center mt-2 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-                                    <span className="text-[10px] uppercase tracking-widest font-bold text-white/50">Total</span>
-                                    <span className="font-heading font-black text-3xl text-white">
+                                <div className="p-3 bg-white/5 rounded-lg border border-white/10 flex justify-between items-center mt-4">
+                                    <span className="text-sm text-foreground">Total Cost:</span>
+                                    <span className="font-bold text-lg text-primary">
                                         ${mParts.reduce((acc, p) => acc + (parseFloat(p.cost) || 0), 0).toFixed(2)}
                                     </span>
                                 </div>
-                                <Button onClick={handleMaintSave} className="w-full h-14 rounded-xl bg-primary hover:bg-primary/90 text-black font-bold text-base shadow-[0_5px_15px_rgba(195,255,0,0.3)]">Save Maintenance</Button>
+                                <Button onClick={handleMaintSave} className="w-full bg-primary text-primary-foreground font-bold">Save Maintenance Log</Button>
                             </div>
                         </DialogContent>
                     </Dialog>
 
                     {maintenanceLogs.length > 0 && (
-                        <div className="space-y-3 mt-5 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-2 mt-4 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                             {maintenanceLogs.slice().reverse().slice(0, 3).map(log => (
-                                <div key={log.id} className="p-4 rounded-2xl bg-[#0a0f0d] border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <p className="font-bold text-white text-sm line-clamp-1 flex-1 pr-3">{log.description}</p>
-                                        <p className="font-heading font-black text-lg text-primary shrink-0">${log.totalCost.toFixed(2)}</p>
+                                <div key={log.id} className="p-3 rounded-lg bg-black/30 text-sm">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <p className="font-semibold text-foreground line-clamp-1 flex-1 pr-2">{log.description}</p>
+                                        <p className="font-bold text-primary shrink-0">${log.totalCost.toFixed(2)}</p>
                                     </div>
-                                    <div className="flex justify-between text-[10px] font-medium text-white/40 uppercase tracking-widest border-t border-white/5 pt-2">
+                                    <div className="flex justify-between text-xs text-muted-foreground">
                                         <span>{new Date(log.date).toLocaleDateString()}</span>
-                                        <span>{log.parts.length} part{log.parts.length !== 1 ? 's' : ''}</span>
+                                        <span>{log.parts.length} part(s)</span>
                                     </div>
                                 </div>
                             ))}
@@ -433,109 +373,100 @@ function EquipmentSection() {
     };
 
     return (
-        <Card className="border-white/10 bg-card rounded-[1.5rem] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] animate-in fade-in slide-in-from-bottom-6 duration-500 delay-500">
-            <CardHeader className="pb-4 pt-5 px-5 border-b border-white/5 bg-white/[0.02]">
-                <CardTitle className="text-[10px] text-white/50 font-bold uppercase tracking-[0.2em] flex items-center justify-between">
-                    <span className="flex items-center gap-2"><Settings2 className="w-4 h-4 text-primary" /> Equipment Tracker</span>
+        <Card className="glass-card border-white/10 bg-card/20">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center text-foreground">
+                    <Settings2 className="w-5 h-5 mr-2 text-primary" /> Equipment Tracker
                 </CardTitle>
             </CardHeader>
-            <CardContent className="px-5 pb-5 pt-5">
+            <CardContent>
                 <Dialog open={eqOpen} onOpenChange={setEqOpen}>
                     <DialogTrigger asChild>
-                        <Button className="w-full h-12 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold mb-5 transition-all">
+                        <Button variant="outline" className="w-full border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary mb-4">
                             <Plus className="w-4 h-4 mr-2" /> Add Equipment
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
-                        <DialogTitle className="text-xl font-heading font-black text-white">Add Equipment</DialogTitle>
-                        <div className="space-y-5 pt-4">
+                    <DialogContent className="sm:max-w-md bg-card/90 backdrop-blur-xl border-primary/30 max-h-[80vh] overflow-y-auto">
+                        <DialogTitle>Add Equipment</DialogTitle>
+                        <div className="space-y-4 pt-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Equipment Name</Label>
-                                <Input value={eqName} onChange={e => setEqName(e.target.value)} className="bg-[#0a0f0d] border-white/10 h-14 rounded-xl text-sm" placeholder="Honda HRX217" />
+                                <Label>Equipment Name</Label>
+                                <Input value={eqName} onChange={e => setEqName(e.target.value)} className="bg-input/50" placeholder="Honda HRX217" />
                             </div>
-                            <div className="space-y-3">
-                                <Label className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Type</Label>
+                            <div className="space-y-2">
+                                <Label>Type</Label>
                                 <div className="grid grid-cols-4 gap-2">
                                     {(['mower', 'trimmer', 'blower', 'other'] as const).map(t => (
                                         <button
                                             key={t}
                                             onClick={() => setEqType(t)}
-                                            className={`h-10 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${eqType === t ? 'bg-primary text-black shadow-[0_2px_10px_rgba(195,255,0,0.3)]' : 'bg-[#0a0f0d] border border-white/5 text-white/50 hover:bg-white/5 hover:text-white'}`}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${eqType === t ? 'bg-primary text-black' : 'bg-white/5 text-muted-foreground hover:text-white'}`}
                                         >
                                             {t}
                                         </button>
                                     ))}
                                 </div>
                             </div>
-                            <div className="space-y-3 pt-4 border-t border-white/10">
-                                <Label className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Service Intervals</Label>
+                            <div className="space-y-2 pt-2 border-t border-white/10">
+                                <Label>Service Intervals</Label>
                                 {serviceItems.map((item, i) => (
                                     <div key={i} className="flex gap-2 items-center">
-                                        <Input value={item.name} onChange={e => { const u = [...serviceItems]; u[i].name = e.target.value; setServiceItems(u); }} className="bg-[#0a0f0d] border-white/10 h-12 rounded-xl text-sm flex-[2]" placeholder="Service name" />
-                                        <Input type="number" value={item.hours} onChange={e => { const u = [...serviceItems]; u[i].hours = e.target.value; setServiceItems(u); }} className="bg-[#0a0f0d] border-white/10 h-12 rounded-xl text-sm flex-[1]" placeholder="Hours" />
-                                        <span className="text-[10px] font-bold text-white/40 uppercase">hrs</span>
-                                        <Button variant="ghost" size="icon" onClick={() => { if (serviceItems.length > 1) setServiceItems(serviceItems.filter((_, idx) => idx !== i)); }} className="text-white/30 hover:text-red-400 shrink-0 h-12 w-12 rounded-xl bg-[#0a0f0d] border border-white/5">
+                                        <Input value={item.name} onChange={e => { const u = [...serviceItems]; u[i].name = e.target.value; setServiceItems(u); }} className="bg-input/50 flex-[2]" placeholder="Service name" />
+                                        <Input type="number" value={item.hours} onChange={e => { const u = [...serviceItems]; u[i].hours = e.target.value; setServiceItems(u); }} className="bg-input/50 flex-[1]" placeholder="Hours" />
+                                        <span className="text-xs text-muted-foreground">hrs</span>
+                                        <Button variant="ghost" size="icon" onClick={() => { if (serviceItems.length > 1) setServiceItems(serviceItems.filter((_, idx) => idx !== i)); }} className="text-muted-foreground hover:text-destructive shrink-0">
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
                                 ))}
-                                <Button variant="ghost" size="sm" onClick={() => setServiceItems([...serviceItems, { name: "", hours: "" }])} className="text-primary hover:text-primary/80 mt-2 text-xs font-bold w-full h-10 border border-dashed border-primary/30 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors">
-                                    <Plus className="w-3 h-3 mr-2" /> Add Interval
+                                <Button variant="ghost" size="sm" onClick={() => setServiceItems([...serviceItems, { name: "", hours: "" }])} className="text-primary hover:text-primary/80 mt-1 text-xs">
+                                    <Plus className="w-3 h-3 mr-1" /> Add Interval
                                 </Button>
                             </div>
-                            <Button onClick={handleAddEquipment} className="w-full h-14 rounded-xl bg-primary hover:bg-primary/90 text-black font-bold text-base shadow-[0_5px_15px_rgba(195,255,0,0.3)] mt-2">Save Equipment</Button>
+                            <Button onClick={handleAddEquipment} className="w-full bg-primary text-primary-foreground font-bold">Save Equipment</Button>
                         </div>
                     </DialogContent>
                 </Dialog>
 
                 {equipment.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center px-4 bg-[#0a0f0d] rounded-2xl border border-white/5 border-dashed">
-                        <Settings2 className="w-8 h-8 text-white/20 mb-3" />
-                        <p className="text-sm text-white/60 font-medium">No equipment tracked.</p>
-                        <p className="text-xs text-white/40 mt-1">Add your mower to monitor service intervals.</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground text-center py-4">No equipment added yet. Add your mower to start tracking service intervals.</p>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {equipment.map(eq => (
-                            <div key={eq.id} className="p-4 rounded-2xl bg-[#0a0f0d] border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-                                <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+                            <div key={eq.id} className="p-3 rounded-xl bg-black/30 border border-white/5">
+                                <div className="flex items-center justify-between mb-2">
                                     <div>
-                                        <p className="font-bold text-base text-white">{eq.name}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <Badge variant="outline" className="text-[9px] uppercase tracking-widest px-1.5 py-0 bg-white/5 border-white/10 text-white/60">{eq.type}</Badge>
-                                            <span className="text-xs text-white/40 font-medium">&middot; {eq.currentHours.toFixed(1)} hrs</span>
-                                        </div>
+                                        <p className="font-bold text-sm text-foreground">{eq.name}</p>
+                                        <p className="text-[11px] text-muted-foreground capitalize">{eq.type} &middot; {eq.currentHours.toFixed(1)} hrs</p>
                                     </div>
-                                    <Button variant="ghost" size="icon" onClick={() => deleteEquipment(eq.id)} className="text-white/30 hover:text-red-400 h-8 w-8 rounded-lg">
-                                        <Trash2 className="w-4 h-4" />
+                                    <Button variant="ghost" size="icon" onClick={() => deleteEquipment(eq.id)} className="text-muted-foreground hover:text-destructive h-7 w-7">
+                                        <Trash2 className="w-3.5 h-3.5" />
                                     </Button>
                                 </div>
-                                <div className="space-y-4">
-                                    {eq.serviceIntervals.map(si => {
-                                        const hoursSince = eq.currentHours - si.lastServiceHours;
-                                        const progress = Math.min((hoursSince / si.intervalHours) * 100, 100);
-                                        const isOverdue = hoursSince >= si.intervalHours;
-                                        const isWarning = progress >= 75;
-                                        return (
-                                            <div key={si.id} className="flex items-center gap-4">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center justify-between mb-1.5">
-                                                        <span className="text-[11px] font-bold text-white/70 truncate uppercase tracking-wider">{si.name}</span>
-                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${isOverdue ? 'text-red-400' : isWarning ? 'text-orange-400' : 'text-emerald-400'}`}>
-                                                            {hoursSince.toFixed(1)}h / {si.intervalHours}h
-                                                        </span>
-                                                    </div>
-                                                    <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]">
-                                                        <div className={`h-full rounded-full transition-all duration-1000 ease-out ${isOverdue ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : isWarning ? 'bg-gradient-to-r from-orange-500 to-orange-400' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'}`} style={{ width: `${progress}%` }} />
-                                                    </div>
+                                {eq.serviceIntervals.map(si => {
+                                    const hoursSince = eq.currentHours - si.lastServiceHours;
+                                    const progress = Math.min((hoursSince / si.intervalHours) * 100, 100);
+                                    const isOverdue = hoursSince >= si.intervalHours;
+                                    const isWarning = progress >= 75;
+                                    return (
+                                        <div key={si.id} className="flex items-center gap-2 mt-2">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-[11px] text-muted-foreground truncate">{si.name}</span>
+                                                    <span className={`text-[10px] font-bold ${isOverdue ? 'text-red-400' : isWarning ? 'text-orange-400' : 'text-emerald-400'}`}>
+                                                        {hoursSince.toFixed(1)}h / {si.intervalHours}h
+                                                    </span>
                                                 </div>
-                                                <button onClick={() => markServiceDone(eq.id, si.id)} className={`shrink-0 h-10 w-10 flex items-center justify-center rounded-xl transition-all ${isOverdue || isWarning ? 'bg-primary/20 text-primary border border-primary/30 hover:bg-primary text-black' : 'bg-white/5 text-white/30 border border-white/10 hover:text-white hover:bg-white/10'}`} title="Mark as serviced">
-                                                    <CheckCircle2 className="w-5 h-5" />
-                                                </button>
+                                                <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                                    <div className={`h-full rounded-full transition-all ${isOverdue ? 'bg-red-500' : isWarning ? 'bg-orange-400' : 'bg-emerald-400'}`} style={{ width: `${progress}%` }} />
+                                                </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                            <button onClick={() => markServiceDone(eq.id, si.id)} className={`shrink-0 p-1 rounded-md transition-colors ${isOverdue || isWarning ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground/40 hover:text-muted-foreground'}`} title="Mark as serviced">
+                                                <CheckCircle2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         ))}
                     </div>
