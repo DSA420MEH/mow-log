@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { MowingEvent, WateringEvent, FertilizingEvent } from './schemas';
 
 export type BillingType = 'Regular' | 'PerCut';
 
@@ -78,6 +79,11 @@ interface AppState {
     maintenanceLogs: MaintenanceLog[];
     equipment: Equipment[];
 
+    // Lawn Care Events
+    mowingEvents: MowingEvent[];
+    wateringEvents: WateringEvent[];
+    fertilizingEvents: FertilizingEvent[];
+
     activeWorkdaySessionId: string | null;
     activeMowSessionId: string | null;
 
@@ -107,6 +113,11 @@ interface AppState {
     addGasLog: (log: Omit<GasLog, 'id' | 'date'>) => void;
     addMaintenanceLog: (log: Omit<MaintenanceLog, 'id' | 'date' | 'totalCost'>) => void;
 
+    // Event Logging Actions
+    addMowingEvent: (event: Omit<MowingEvent, 'id' | 'date'>) => void;
+    addWateringEvent: (event: Omit<WateringEvent, 'id' | 'date'>) => void;
+    addFertilizingEvent: (event: Omit<FertilizingEvent, 'id' | 'date'>) => void;
+
     // Route features
     saveClientRoute: (clientId: string, screenshot: string, lat: number, lng: number) => void;
     setHomeAddress: (address: string, lat: number, lng: number) => void;
@@ -129,6 +140,9 @@ export const useStore = create<AppState>()(
             gasLogs: [],
             maintenanceLogs: [],
             equipment: [],
+            mowingEvents: [],
+            wateringEvents: [],
+            fertilizingEvents: [],
             activeWorkdaySessionId: null,
             activeMowSessionId: null,
             homeAddress: '',
@@ -351,6 +365,30 @@ export const useStore = create<AppState>()(
                         ],
                     };
                 }),
+
+            addMowingEvent: (event) =>
+                set((state) => ({
+                    mowingEvents: [
+                        ...state.mowingEvents,
+                        { ...event, type: "mow", id: crypto.randomUUID(), date: new Date() },
+                    ],
+                })),
+
+            addWateringEvent: (event) =>
+                set((state) => ({
+                    wateringEvents: [
+                        ...state.wateringEvents,
+                        { ...event, type: "water", id: crypto.randomUUID(), date: new Date() },
+                    ],
+                })),
+
+            addFertilizingEvent: (event) =>
+                set((state) => ({
+                    fertilizingEvents: [
+                        ...state.fertilizingEvents,
+                        { ...event, type: "fertilize", id: crypto.randomUUID(), date: new Date() },
+                    ],
+                })),
 
             saveClientRoute: (clientId, screenshot, lat, lng) =>
                 set((state) => ({

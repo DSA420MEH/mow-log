@@ -137,12 +137,12 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
                                 {initialData ? "Close" : "Dashboard"}
                             </Button>
                             {!initialData && (
-                                <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold">
+                                <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold shadow-[0_4px_20px_rgba(195,255,0,0.3)] transition-all">
                                     Start First Mow
                                 </Button>
                             )}
                             {initialData && (
-                                <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold" onClick={() => setOpen(false)}>
+                                <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold shadow-[0_4px_20px_rgba(195,255,0,0.3)] transition-all" onClick={() => setOpen(false)}>
                                     Done
                                 </Button>
                             )}
@@ -157,13 +157,13 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setStep(1); setSuccess(false); } }}>
             <DialogTrigger asChild>
                 {customTrigger ? customTrigger : (
-                    <Button className="fixed bottom-24 right-4 w-14 h-14 rounded-full shadow-lg shadow-black/50 bg-primary hover:bg-primary/90 text-primary-foreground z-40">
-                        {initialData ? <Pencil className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
+                    <Button className="fixed bottom-24 right-4 w-14 h-14 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.4),0_0_20px_rgba(195,255,0,0.3)] bg-primary hover:bg-primary/90 text-black z-40 transition-all active:scale-95 group border border-primary/50">
+                        {initialData ? <Pencil className="w-6 h-6 group-hover:scale-110 transition-transform" /> : <Plus className="w-6 h-6 group-hover:scale-110 transition-transform" />}
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md bg-[#1a201c]/95 backdrop-blur-2xl border-primary/30 text-white overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                <DialogTitle className="text-xl font-bold tracking-tight">
+            <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-white/10 text-white overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.05)] rounded-[1.5rem]">
+                <DialogTitle className="text-2xl font-heading font-bold tracking-tight">
                     {initialData ? `Edit ${initialData.name}` : "Add New Address"}
                 </DialogTitle>
 
@@ -180,32 +180,32 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
                 <div className="space-y-4 relative min-h-[350px]">
                     {/* Step 1: Location */}
                     {step === 1 && (
-                        <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-4">
+                        <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-4 pt-2">
                             <div className="space-y-2">
-                                <Label htmlFor="address" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Street Address</Label>
-                                <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="bg-white/[0.03] border-white/10 focus-visible:ring-primary h-12" placeholder="123 Main St" />
+                                <Label htmlFor="address" className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Street Address</Label>
+                                <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="bg-white/[0.03] border-white/10 focus-visible:ring-primary h-14 rounded-xl px-4 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]" placeholder="123 Main St" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="city" className="text-[10px] uppercase tracking-widest font-bold opacity-70">City</Label>
-                                    <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} className="bg-white/[0.03] border-white/10 h-12" placeholder="Springfield" />
+                                    <Label htmlFor="city" className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">City</Label>
+                                    <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} className="bg-white/[0.03] border-white/10 h-14 rounded-xl px-4 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]" placeholder="Springfield" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="zip" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Postal Code</Label>
-                                    <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} className="bg-white/[0.03] border-white/10 h-12" placeholder="12345" />
+                                    <Label htmlFor="zip" className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Postal Code</Label>
+                                    <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} className="bg-white/[0.03] border-white/10 h-14 rounded-xl px-4 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]" placeholder="12345" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase tracking-widest font-bold opacity-70">Lawn Size</Label>
+                                <Label className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Lawn Size</Label>
                                 <Select value={sqft} onValueChange={setSqft}>
-                                    <SelectTrigger className="bg-white/[0.03] border-white/10 h-12">
+                                    <SelectTrigger className="bg-white/[0.03] border-white/10 h-14 rounded-xl px-4 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
                                         <SelectValue placeholder="Select size" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-[#1a201c] border-white/10 text-white">
-                                        <SelectItem value="Under 5000">Under 5,000 sq ft</SelectItem>
-                                        <SelectItem value="5000-10000">5,000 - 10,000 sq ft</SelectItem>
-                                        <SelectItem value="10000+">10,000+ sq ft</SelectItem>
-                                        <SelectItem value="Acre+">1 Acre+</SelectItem>
+                                    <SelectContent className="bg-card border-white/10 text-white rounded-xl shadow-2xl">
+                                        <SelectItem value="Under 5000" className="rounded-lg focus:bg-white/5 focus:text-white cursor-pointer py-2">Under 5,000 sq ft</SelectItem>
+                                        <SelectItem value="5000-10000" className="rounded-lg focus:bg-white/5 focus:text-white cursor-pointer py-2">5,000 - 10,000 sq ft</SelectItem>
+                                        <SelectItem value="10000+" className="rounded-lg focus:bg-white/5 focus:text-white cursor-pointer py-2">10,000+ sq ft</SelectItem>
+                                        <SelectItem value="Acre+" className="rounded-lg focus:bg-white/5 focus:text-white cursor-pointer py-2">1 Acre+</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -214,32 +214,32 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
 
                     {/* Step 2: Client */}
                     {step === 2 && (
-                        <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-4">
+                        <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-4 pt-2">
                             <div className="space-y-2">
-                                <Label htmlFor="name" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Client Name</Label>
-                                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white/[0.03] border-white/10 h-12" placeholder="John Doe" />
+                                <Label htmlFor="name" className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Client Name</Label>
+                                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white/[0.03] border-white/10 h-14 rounded-xl px-4 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]" placeholder="John Doe" />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="phone" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Phone Number</Label>
-                                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-white/[0.03] border-white/10 h-12" placeholder="(555) 123-4567" />
+                                <Label htmlFor="phone" className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Phone Number</Label>
+                                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-white/[0.03] border-white/10 h-14 rounded-xl px-4 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]" placeholder="(555) 123-4567" />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-2">
-                                    <Label htmlFor="email" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Email</Label>
-                                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white/[0.03] border-white/10 h-12" placeholder="john@example.com" />
+                                    <Label htmlFor="email" className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Email</Label>
+                                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white/[0.03] border-white/10 h-14 rounded-xl px-4 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]" placeholder="john@example.com" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="contract" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Contract</Label>
-                                    <Input id="contract" value={contractLength} onChange={(e) => setContractLength(e.target.value)} className="bg-white/[0.03] border-white/10 h-12" placeholder="6 Months" />
+                                    <Label htmlFor="contract" className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Contract</Label>
+                                    <Input id="contract" value={contractLength} onChange={(e) => setContractLength(e.target.value)} className="bg-white/[0.03] border-white/10 h-14 rounded-xl px-4 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]" placeholder="6 Months" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="notes" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Notes/Instructions</Label>
+                                <Label htmlFor="notes" className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Notes/Instructions</Label>
                                 <textarea
                                     id="notes"
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    className="w-full min-h-[100px] rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 text-white"
+                                    className="w-full min-h-[100px] rounded-xl border border-white/10 bg-white/[0.03] shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 text-white resize-none"
                                     placeholder="Gate code is 1234. Watch out for the dog."
                                 />
                             </div>
@@ -248,35 +248,35 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
 
                     {/* Step 3: Pricing */}
                     {step === 3 && (
-                        <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-4">
+                        <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-4 pt-2">
                             <div className="space-y-4">
-                                <Label className="text-[10px] uppercase tracking-widest font-bold opacity-70">Billing Category</Label>
+                                <Label className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Billing Category</Label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <Button
                                         variant="outline"
                                         onClick={() => setBillingType("Regular")}
-                                        className={`h-24 flex flex-col gap-2 rounded-2xl transition-all ${billingType === "Regular" ? "border-primary bg-primary/10 text-primary" : "border-white/5 bg-white/[0.02] text-white/60 hover:text-white"}`}
+                                        className={`h-28 flex flex-col gap-2 rounded-2xl transition-all ${billingType === "Regular" ? "border-primary bg-primary/10 text-primary shadow-[inset_0_0_20px_rgba(195,255,0,0.05)] ring-1 ring-primary/20" : "border-white/5 bg-white/[0.02] text-white/50 hover:text-white hover:bg-white/[0.04]"}`}
                                     >
-                                        <span className="font-bold">Regular</span>
-                                        <span className="text-[10px] uppercase tracking-tighter opacity-50">Fixed Monthly</span>
+                                        <span className="font-bold text-base">Regular</span>
+                                        <span className="text-[10px] uppercase tracking-widest opacity-60">Fixed Monthly</span>
                                     </Button>
                                     <Button
                                         variant="outline"
                                         onClick={() => setBillingType("PerCut")}
-                                        className={`h-24 flex flex-col gap-2 rounded-2xl transition-all ${billingType === "PerCut" ? "border-primary bg-primary/10 text-primary" : "border-white/5 bg-white/[0.02] text-white/60 hover:text-white"}`}
+                                        className={`h-28 flex flex-col gap-2 rounded-2xl transition-all ${billingType === "PerCut" ? "border-primary bg-primary/10 text-primary shadow-[inset_0_0_20px_rgba(195,255,0,0.05)] ring-1 ring-primary/20" : "border-white/5 bg-white/[0.02] text-white/50 hover:text-white hover:bg-white/[0.04]"}`}
                                     >
-                                        <span className="font-bold">Per Cut</span>
-                                        <span className="text-[10px] uppercase tracking-tighter opacity-50">Per Session</span>
+                                        <span className="font-bold text-base">Per Cut</span>
+                                        <span className="text-[10px] uppercase tracking-widest opacity-60">Per Session</span>
                                     </Button>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="amount" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Amount ($)</Label>
+                            <div className="space-y-2 mt-6">
+                                <Label htmlFor="amount" className="text-[10px] uppercase tracking-widest font-bold opacity-70 ml-1">Amount ($)</Label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-3 text-primary/60 font-bold">$</span>
-                                    <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-white/[0.03] border-white/10 pl-8 text-2xl font-black h-14 text-white" placeholder="50.00" />
+                                    <span className="absolute left-5 top-4 text-primary font-bold opacity-80">$</span>
+                                    <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-white/[0.03] border-white/10 pl-10 text-3xl font-heading font-bold h-16 rounded-xl text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] focus-visible:ring-primary/50" placeholder="50.00" />
                                 </div>
-                                <p className="text-[10px] text-muted-foreground italic">
+                                <p className="text-[10px] text-muted-foreground italic ml-1 mt-2 tracking-wide">
                                     {billingType === "Regular" ? "Charged monthly regardless of visit count." : "Charged each time a session is completed."}
                                 </p>
                             </div>
@@ -284,16 +284,16 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
                     )}
                 </div>
 
-                <div className="flex justify-between mt-6 pt-4 border-t border-white/5">
-                    <Button variant="ghost" onClick={() => setStep(step - 1)} disabled={step === 1} className="text-white/40 hover:text-white hover:bg-white/5">
+                <div className="flex justify-between mt-8 pt-5 border-t border-white/5 relative z-10 bg-card">
+                    <Button variant="ghost" onClick={() => setStep(step - 1)} disabled={step === 1} className="text-white/40 hover:text-white hover:bg-white/[0.05] rounded-xl h-12 px-5">
                         <ChevronLeft className="w-4 h-4 mr-2" /> Back
                     </Button>
                     {step < 3 ? (
-                        <Button onClick={() => setStep(step + 1)} className="bg-white/10 text-white hover:bg-white/20 px-8 rounded-xl font-bold">
+                        <Button onClick={() => setStep(step + 1)} className="bg-white/10 text-white hover:bg-white/20 px-8 rounded-xl font-bold h-12 border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] transition-all">
                             Next <ChevronRight className="w-4 h-4 ml-2" />
                         </Button>
                     ) : (
-                        <Button onClick={handleSave} className="bg-primary text-primary-foreground hover:bg-primary/90 font-black px-8 rounded-xl shadow-[0_0_20px_rgba(170,255,0,0.3)] transition-all active:scale-[0.98]">
+                        <Button onClick={handleSave} className="bg-primary text-black font-bold h-12 px-8 rounded-xl shadow-[0_4px_20px_rgba(195,255,0,0.3)] transition-all active:scale-[0.98]">
                             {initialData ? "Update Client" : "Save Address"}
                         </Button>
                     )}

@@ -11,6 +11,7 @@ import { useState, useEffect, useMemo } from "react";
 import { SettingsModal } from "@/components/SettingsModal";
 import { cn } from "@/lib/utils";
 import { getSeedData } from "@/lib/seed-data";
+import { WeatherWidget } from "@/components/WeatherWidget";
 
 // Predictable avatar colors based on string hash
 const generateAvatarStyle = (name: string) => {
@@ -87,7 +88,7 @@ function InlineMowTimer({ startTime, breakTimeTotal = 0, stuckTimeTotal = 0, sta
 }
 
 export default function AddressesPage() {
-    const { clients, sessions, startMowSession, endMowSession, activeMowSessionId, gasLogs, maintenanceLogs } = useStore();
+    const { clients, sessions, startMowSession, endMowSession, activeMowSessionId, gasLogs, maintenanceLogs, homeAddress, homeLat, homeLng } = useStore();
 
     const activeSession = sessions.find(s => s.id === activeMowSessionId);
 
@@ -206,6 +207,12 @@ export default function AddressesPage() {
                 open={!!editingClient}
                 onOpenChange={(open) => !open && setEditingClient(null)}
             />
+
+            {homeAddress && homeLat && homeLng && (
+                <div className="mb-6">
+                    <WeatherWidget lat={homeLat} lng={homeLng} />
+                </div>
+            )}
 
             <div className="flex items-center gap-2 mb-8 bg-[#151a17] w-fit p-1 rounded-xl glass-card border border-white/5">
                 <button

@@ -812,10 +812,10 @@ export function getSeedData() {
     gasLogs: mockGasLogs,
     maintenanceLogs: mockMaintenanceLogs,
     equipment: mockEquipment,
-    // Default home in Orlando
-    homeAddress: "500 S Orange Ave, Orlando, FL",
-    homeLat: 28.5355,
-    homeLng: -81.3790,
+    // Default home in Moncton, New Brunswick
+    homeAddress: "Moncton, NB, Canada",
+    homeLat: 46.0878,
+    homeLng: -64.7782,
     laborRate: 25,
     fuelCostPerKm: 0.15,
   };
