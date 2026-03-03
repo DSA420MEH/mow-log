@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon } from "lucide-react";
+import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon, Scissors } from "lucide-react";
+import type { CutHeightRecommendation } from "@/lib/cut-height-calc";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ interface SwipeableClientCardProps {
     isActiveMowing: boolean;
     activeSession?: ActiveSessionData | null;
     avatarStyle: { bg: string; text: string };
+    cutHeight?: CutHeightRecommendation | null;
     onStartMowing: () => void;
     onCompleteMowing: () => void;
     onEdit?: () => void;
@@ -113,6 +115,7 @@ export function SwipeableClientCard({
     isActiveMowing,
     activeSession,
     avatarStyle,
+    cutHeight,
     onStartMowing,
     onCompleteMowing,
     onEdit,
@@ -120,6 +123,7 @@ export function SwipeableClientCard({
 }: SwipeableClientCardProps) {
     const router = useRouter();
     const [activePanel, setActivePanel] = useState(0);
+    const [showCutExplanation, setShowCutExplanation] = useState(false);
     const touchStartX = useRef(0);
     const touchStartY = useRef(0);
     const isSwiping = useRef(false);
@@ -247,7 +251,39 @@ export function SwipeableClientCard({
                             RATE MISSING
                         </div>
                     )}
+
+                    {/* Cut Height Recommendation Badge */}
+                    {cutHeight && (
+                        <button
+                            onClick={() => setShowCutExplanation(prev => !prev)}
+                            className={cn(
+                                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black tracking-tight transition-all",
+                                cutHeight.level === 'high'
+                                    ? "bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                                    : cutHeight.level === 'low'
+                                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                                        : "bg-white/5 text-white/50 border border-white/10"
+                            )}
+                        >
+                            <Scissors className="w-3 h-3" />
+                            {cutHeight.label}
+                        </button>
+                    )}
                 </div>
+
+                {/* Cut Height Explanation (expandable) */}
+                {cutHeight && showCutExplanation && (
+                    <div className={cn(
+                        "mt-1 mx-0 px-3 py-2 rounded-lg text-[10px] leading-relaxed border animate-in fade-in slide-in-from-top-1 duration-200",
+                        cutHeight.level === 'high'
+                            ? "bg-amber-500/5 border-amber-500/10 text-amber-300/80"
+                            : cutHeight.level === 'low'
+                                ? "bg-emerald-500/5 border-emerald-500/10 text-emerald-300/80"
+                                : "bg-white/[0.02] border-white/5 text-white/40"
+                    )}>
+                        {cutHeight.explanation}
+                    </div>
+                )}
 
                 {/* Active Mowing Timer */}
                 {isActiveMowing && activeSession && (

@@ -12,6 +12,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { cn } from "@/lib/utils";
 import { getSeedData } from "@/lib/seed-data";
 import { WeatherWidget } from "@/components/WeatherWidget";
+import { useCutHeight } from "@/hooks/use-cut-height";
 
 // Predictable avatar colors based on string hash
 const generateAvatarStyle = (name: string) => {
@@ -89,6 +90,7 @@ function InlineMowTimer({ startTime, breakTimeTotal = 0, stuckTimeTotal = 0, sta
 
 export default function AddressesPage() {
     const { clients, sessions, startMowSession, endMowSession, activeMowSessionId, gasLogs, maintenanceLogs, homeAddress, homeLat, homeLng } = useStore();
+    const { recommendation: cutHeightRec } = useCutHeight(homeLat || 0, homeLng || 0);
 
     const activeSession = sessions.find(s => s.id === activeMowSessionId);
 
@@ -279,6 +281,7 @@ export default function AddressesPage() {
                                     endTime: activeSession.endTime,
                                 } : null}
                                 avatarStyle={avatarStyle}
+                                cutHeight={cutHeightRec}
                                 onStartMowing={() => handleStartMowing(client.id)}
                                 onCompleteMowing={handleCompleteMowing}
                                 onEdit={() => setEditingClient(client)}
