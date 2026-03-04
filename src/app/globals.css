@@ -56,7 +56,7 @@
   --card-foreground: #e8ffe8;
   --popover: #0a0f0d;
   --popover-foreground: #e8ffe8;
-  --primary: #aaff00;
+  --primary: #c3ff00;
   --primary-foreground: #000000;
   --secondary: #1a3a1a;
   --secondary-foreground: #e8ffe8;
@@ -67,20 +67,20 @@
   --destructive: #ff4444;
   --border: rgba(107, 140, 107, 0.3);
   --input: rgba(107, 140, 107, 0.4);
-  --ring: #aaff00;
-  --chart-1: #aaff00;
+  --ring: #c3ff00;
+  --chart-1: #c3ff00;
   --chart-2: #1a3a1a;
   --chart-3: #6b8c6b;
   --chart-4: #e8ffe8;
   --chart-5: #ff4444;
   --sidebar: #0a0f0d;
   --sidebar-foreground: #e8ffe8;
-  --sidebar-primary: #aaff00;
+  --sidebar-primary: #c3ff00;
   --sidebar-primary-foreground: #000000;
   --sidebar-accent: #1a3a1a;
-  --sidebar-accent-foreground: #aaff00;
+  --sidebar-accent-foreground: #c3ff00;
   --sidebar-border: rgba(107, 140, 107, 0.3);
-  --sidebar-ring: #aaff00;
+  --sidebar-ring: #c3ff00;
 }
 
 @layer base {
@@ -126,11 +126,11 @@
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .neon-border-glow {
-  box-shadow: 0 0 15px rgba(170, 255, 0, 0.15), inset 0 0 5px rgba(170, 255, 0, 0.05);
+  box-shadow: 0 0 20px rgba(195, 255, 0, 0.2), inset 0 0 8px rgba(195, 255, 0, 0.06);
 }
 
 .inner-glow-lime {
@@ -166,4 +166,20 @@
 
 .active-dot {
   animation: dot-expand 2s infinite ease-in-out;
+}
+
+/* Card entrance animation */
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-in {
+  animation: card-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

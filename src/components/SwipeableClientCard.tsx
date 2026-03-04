@@ -91,7 +91,7 @@ function SwipeDots({ count, active }: { count: number; active: number }) {
 // ── Metric Card ────────────────────────────────────────────────────────────────
 function Metric({ label, value, icon: Icon, colorClass = "text-primary/60" }: { label: string; value: string | number; icon: LucideIcon; colorClass?: string }) {
     return (
-        <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5 flex flex-col group hover:bg-white/[0.05] transition-colors relative overflow-hidden">
+        <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5 border-l-2 border-l-transparent group hover:bg-white/[0.05] hover:border-l-primary/40 transition-all duration-200 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
                 <Icon className="w-8 h-8" />
             </div>
@@ -171,28 +171,36 @@ export function SwipeableClientCard({
     return (
         <div
             className={cn(
-                "glass-card rounded-2xl bg-[#1a201c] border relative overflow-hidden flex flex-col transition-colors",
+                "glass-card animate-card-in rounded-2xl bg-[#1a201c] border relative overflow-hidden flex flex-col transition-colors",
                 isActiveMowing
-                    ? "border-primary shadow-[0_0_15px_rgba(170,255,0,0.1)]"
+                    ? "border-primary shadow-[0_0_20px_rgba(195,255,0,0.12)]"
                     : "border-white/5 hover:border-primary/20"
             )}
         >
             {/* Active mowing indicator */}
             {isActiveMowing && (
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70 z-20"></div>
+                <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-primary to-transparent z-20 shadow-[0_0_12px_4px_rgba(195,255,0,0.25)]"></div>
             )}
 
             {/* Panel label tab */}
             <div className="flex items-center justify-between px-4 pt-4 pb-1 z-30">
-                <div className="flex items-center gap-2 p-1 bg-black/20 rounded-lg backdrop-blur-md border border-white/5">
+                <div className="relative flex items-center p-1 bg-black/20 rounded-lg backdrop-blur-md border border-white/[0.07]">
+                    {/* Sliding pill */}
+                    <span
+                        className="absolute top-1 bottom-1 rounded-md bg-primary/20 border border-primary/20 shadow-[inset_0_0_8px_rgba(195,255,0,0.08)] transition-all duration-300 ease-out pointer-events-none"
+                        style={{
+                            left: `calc(${activePanel} * (100% - 0.5rem) / ${PANEL_LABELS.length} + 0.25rem)`,
+                            width: `calc((100% - 0.5rem) / ${PANEL_LABELS.length})`,
+                        }}
+                    />
                     {PANEL_LABELS.map((label, i) => (
                         <button
                             key={label}
                             onClick={() => setActivePanel(i)}
                             className={cn(
-                                "text-[9px] font-black uppercase tracking-[0.15em] px-3 py-1.5 rounded-md transition-all duration-300",
+                                "relative z-10 text-[9px] font-black uppercase tracking-[0.15em] px-3 py-1.5 rounded-md transition-colors duration-200 min-w-[52px]",
                                 i === activePanel
-                                    ? "text-primary bg-primary/20 shadow-[inset_0_0_10px_rgba(170,255,0,0.1)]"
+                                    ? "text-primary"
                                     : "text-white/30 hover:text-white/60"
                             )}
                         >
@@ -212,7 +220,11 @@ export function SwipeableClientCard({
             <div className="px-4 pt-4 pb-2">
                 <div className="flex items-start justify-between">
                     <div className="flex gap-3 items-start">
-                        <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base", avatarStyle.bg, avatarStyle.text)}>
+                        <div className={cn(
+                            "w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base transition-all duration-300",
+                            avatarStyle.bg, avatarStyle.text,
+                            isActiveMowing && "ring-2 ring-primary/60 ring-offset-1 ring-offset-[#1a201c]"
+                        )}>
                             {getInitials(client.name)}
                         </div>
                         <div>
