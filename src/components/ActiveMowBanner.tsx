@@ -21,8 +21,6 @@ export function ActiveMowBanner() {
     const activeClient = activeSession?.clientId ? clients.find(c => c.id === activeSession.clientId) : null;
 
     useEffect(() => {
-        let interval: NodeJS.Timeout;
-
         const tick = () => {
             if (!activeSession) {
                 setElapsed(0);
@@ -63,7 +61,7 @@ export function ActiveMowBanner() {
         };
 
         tick();
-        interval = setInterval(tick, 1000);
+        const interval = setInterval(tick, 1000);
 
         return () => clearInterval(interval);
     }, [activeSession]);

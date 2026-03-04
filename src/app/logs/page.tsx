@@ -1,23 +1,20 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { useStore, type Equipment } from "@/lib/store";
-import { computeDailyProfit, computeEquipmentAlerts } from "@/lib/selectors";
+import { computeDailyProfit } from "@/lib/selectors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, Fuel, Wrench, Play, Square, Pause, Plus, Scan, Trash2, TrendingUp, TrendingDown, DollarSign, Settings2, CheckCircle2, AlertTriangle } from "lucide-react";
-import { useMemo } from "react";
+import { Clock, Fuel, Wrench, Play, Square, Pause, Plus, Scan, Trash2, DollarSign, Settings2, CheckCircle2 } from "lucide-react";
 
 // Daily profit summary component
 function DailyProfitCard() {
     const today = new Date().toISOString().slice(0, 10);
-    const { clients, sessions, gasLogs, maintenanceLogs } = useStore();
-    const daily = useMemo(() => computeDailyProfit(today), [today, clients, sessions, gasLogs, maintenanceLogs]);
+    const daily = computeDailyProfit(today);
 
     if (daily.sessionsCount === 0 && daily.gasCost === 0) return null;
 
@@ -106,6 +103,10 @@ export default function LogsPage() {
     const [gasOpen, setGasOpen] = useState(false);
     const [liters, setLiters] = useState("");
     const [pricePerLiter, setPricePerLiter] = useState("");
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanError, setScanError] = useState<string | null>(null);
+    const [scanStatus, setScanStatus] = useState<string | null>(null);
+    const scanFileInputRef = useRef<HTMLInputElement>(null);
 
     const handleGasSave = () => {
         const l = parseFloat(liters);
@@ -114,6 +115,91 @@ export default function LogsPage() {
             addGasLog({ liters: l, pricePerLiter: p, total: l * p, isAiScanned: false });
             setGasOpen(false);
             setLiters(""); setPricePerLiter("");
+        }
+    };
+
+    const readImageAsBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                if (typeof reader.result !== "string") {
+                    reject(new Error("Could not read selected image."));
+                    return;
+                }
+                const [, imageBase64] = reader.result.split(",");
+                if (!imageBase64) {
+                    reject(new Error("Invalid image data."));
+                    return;
+                }
+                resolve(imageBase64);
+            };
+            reader.onerror = () => reject(new Error("Failed to read image file."));
+            reader.readAsDataURL(file);
+        });
+
+    const handleScanClick = () => {
+        setScanError(null);
+        setScanStatus(null);
+        scanFileInputRef.current?.click();
+    };
+
+    const handleScanFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+
+        if (!file.type.startsWith("image/")) {
+            setScanError("Please select an image file.");
+            return;
+        }
+
+        setIsScanning(true);
+        setScanError(null);
+        setScanStatus(null);
+
+        try {
+            const imageBase64 = await readImageAsBase64(file);
+            const response = await fetch("/api/scan-pump", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageBase64 }),
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    typeof payload?.error === "string"
+                        ? payload.error
+                        : "Failed to scan pump display."
+                );
+            }
+
+            const litersValue = Number(payload?.liters);
+            const pricePerLiterValue = Number(payload?.pricePerLiter);
+            const totalValue = Number(payload?.total);
+
+            if (
+                !Number.isFinite(litersValue) ||
+                !Number.isFinite(pricePerLiterValue) ||
+                !Number.isFinite(totalValue)
+            ) {
+                throw new Error("Scan returned invalid values.");
+            }
+
+            addGasLog({
+                liters: litersValue,
+                pricePerLiter: pricePerLiterValue,
+                total: totalValue,
+                isAiScanned: true,
+            });
+
+            setScanStatus(
+                `Logged ${litersValue.toFixed(2)}L at $${pricePerLiterValue.toFixed(2)}/L.`
+            );
+        } catch (error) {
+            setScanError(error instanceof Error ? error.message : "Scanning failed.");
+        } finally {
+            setIsScanning(false);
         }
     };
 
@@ -201,6 +287,14 @@ export default function LogsPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    <input
+                        ref={scanFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={handleScanFileSelected}
+                    />
                     <div className="grid grid-cols-2 gap-3">
                         <Dialog open={gasOpen} onOpenChange={setGasOpen}>
                             <DialogTrigger asChild>
@@ -230,10 +324,18 @@ export default function LogsPage() {
                             </DialogContent>
                         </Dialog>
 
-                        <Button variant="secondary" className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80">
-                            <Scan className="w-4 h-4 mr-2" /> Scan Pump (AI)
+                        <Button
+                            variant="secondary"
+                            onClick={handleScanClick}
+                            disabled={isScanning}
+                            className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-60"
+                        >
+                            <Scan className="w-4 h-4 mr-2" />
+                            {isScanning ? "Scanning..." : "Scan Pump (AI)"}
                         </Button>
                     </div>
+                    {scanError && <p className="text-xs text-red-400">{scanError}</p>}
+                    {scanStatus && <p className="text-xs text-emerald-400">{scanStatus}</p>}
 
                     {gasLogs.length > 0 && (
                         <div className="space-y-2 mt-4 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
@@ -342,7 +444,6 @@ export default function LogsPage() {
 
 function EquipmentSection() {
     const { equipment, addEquipment, markServiceDone, deleteEquipment } = useStore();
-    const alerts = useMemo(() => computeEquipmentAlerts(), [equipment]);
     const [eqOpen, setEqOpen] = useState(false);
     const [eqName, setEqName] = useState("");
     const [eqType, setEqType] = useState<Equipment['type']>('mower');

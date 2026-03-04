@@ -6,8 +6,8 @@ import { computeClientProfit, computeEquipmentAlerts } from "@/lib/selectors";
 import { ClientForm } from "@/components/ClientForm";
 import { Button } from "@/components/ui/button";
 import { SwipeableClientCard } from "@/components/SwipeableClientCard";
-import { MapPin, Timer, ListTodo, Plus, AlertTriangle } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { MapPin, ListTodo, Plus, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { SettingsModal } from "@/components/SettingsModal";
 import { cn } from "@/lib/utils";
 import { getSeedData } from "@/lib/seed-data";
@@ -33,7 +33,8 @@ const generateAvatarStyle = (name: string) => {
 // Equipment alerts banner
 function EquipmentAlertBanner() {
     const equipment = useStore((s) => s.equipment);
-    const alerts = useMemo(() => computeEquipmentAlerts(), [equipment]);
+    void equipment;
+    const alerts = computeEquipmentAlerts();
     if (alerts.length === 0) return null;
 
     const overdueCount = alerts.filter(a => a.isOverdue).length;
@@ -89,7 +90,7 @@ function InlineMowTimer({ startTime, breakTimeTotal = 0, stuckTimeTotal = 0, sta
 }
 
 export default function AddressesPage() {
-    const { clients, sessions, startMowSession, endMowSession, activeMowSessionId, gasLogs, maintenanceLogs, homeAddress, homeLat, homeLng } = useStore();
+    const { clients, sessions, startMowSession, endMowSession, activeMowSessionId, homeAddress, homeLat, homeLng } = useStore();
     const { recommendation: cutHeightRec } = useCutHeight(homeLat || 0, homeLng || 0);
 
     const activeSession = sessions.find(s => s.id === activeMowSessionId);

@@ -5,7 +5,7 @@ import { useStore, type Client, type Session } from "@/lib/store";
 import { computeClientProfit } from "@/lib/selectors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-    Timer, Banknote, Fuel, Wrench, Briefcase, TrendingUp, TrendingDown,
+    Timer, Fuel, Wrench, Briefcase, TrendingUp, TrendingDown,
     Users, Clock, AlertTriangle, Zap, DollarSign, BarChart3
 } from "lucide-react";
 import {
@@ -26,11 +26,6 @@ const pct = (part: number, total: number) =>
 function getMonthLabel(dateStr: string) {
     const d = new Date(dateStr);
     return d.toLocaleDateString("en-US", { month: "short" });
-}
-
-function getDayLabel(dateStr: string) {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 // ── Per-client stats helper ──────────────────────

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import * as turf from "@turf/turf";
 import { planMowingRoute, deckWidthFromInches, type DischargeMode, type RoutePlan } from "@/lib/route-planner";
 import { useStore } from "@/lib/store";
-import type { Feature, Polygon, Position } from "geojson";
+import type { Feature, Polygon } from "geojson";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
@@ -13,6 +13,13 @@ import "leaflet-draw";
 
 // ─── Types ──────────────────────────────────────
 type DrawMode = "lawn" | "obstacle";
+
+interface NominatimResult {
+    lat: string;
+    lon: string;
+    type?: string;
+    class?: string;
+}
 
 interface LawnMapProps {
     initialLat?: number;
@@ -234,10 +241,10 @@ export default function LawnMap({
                 const res = await fetch(
                     `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=5&addressdetails=1&countrycodes=ca`
                 );
-                const data = await res.json();
+                const data = (await res.json()) as NominatimResult[];
                 if (data.length > 0) {
                     // Try to find a building or specific house number first
-                    const bestMatch = data.find((item: any) =>
+                    const bestMatch = data.find((item) =>
                         item.type === "house" ||
                         item.type === "residential" ||
                         item.type === "building" ||

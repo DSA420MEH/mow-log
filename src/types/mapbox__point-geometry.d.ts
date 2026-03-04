@@ -24,6 +24,6 @@ declare module 'mapbox__point-geometry' {
         angleTo(b: Point): number;
         angleWith(b: Point): number;
         angleWithSep(x: number, y: number): number;
-        static convert(a: any): Point;
+        static convert(a: unknown): Point;
     }
 }

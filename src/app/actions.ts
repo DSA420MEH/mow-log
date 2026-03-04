@@ -8,5 +8,9 @@ export async function revalidatePWA(urls: string[]) {
       secret: process.env.REVALIDATION_SECRET,
     }),
   });
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(typeof data?.error === "string" ? data.error : "PWA revalidation failed.");
+  }
+  return data;
 }

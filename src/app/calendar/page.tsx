@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function CalendarPage() {
@@ -38,15 +38,6 @@ export default function CalendarPage() {
     const totalMonthlyTime = currentMonthSessions.reduce((acc, s) => {
         return acc + (new Date(s.endTime!).getTime() - new Date(s.startTime).getTime()) / 1000 - s.breakTimeTotal;
     }, 0);
-
-    let monthlyIncome = 0;
-    // This is a rough calculation for the current month just to show UI
-    clients.forEach(c => {
-        if (c.billingType === 'Regular') monthlyIncome += c.amount;
-        else monthlyIncome += c.amount * getSessionsForDate(selectedDateStr || "").filter(s => s.clientId === c.id).length;
-        // Wait, the regular amount should just be once per month basically, and PerCut is per session.
-        // For simplicity of UI vibe coding, we'll do an estimate.
-    });
 
     const days = [];
     for (let i = 0; i < firstDayOfMonth; i++) days.push(null);

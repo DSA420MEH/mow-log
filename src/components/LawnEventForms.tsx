@@ -1,16 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useStore } from "@/lib/store";
 import {
     MowingEventSchema,
     WateringEventSchema,
     FertilizingEventSchema,
-    MowingEvent,
-    WateringEvent,
-    FertilizingEvent,
 } from "@/lib/schemas";
 
 import {
@@ -32,38 +30,50 @@ export function LawnEventForms() {
     const [activeTab, setActiveTab] = useState("mow");
 
     const { addMowingEvent, addWateringEvent, addFertilizingEvent } = useStore();
+    const mowingFormSchema = MowingEventSchema.omit({ id: true, date: true });
+    const wateringFormSchema = WateringEventSchema.omit({ id: true, date: true });
+    const fertilizingFormSchema = FertilizingEventSchema.omit({ id: true, date: true });
+
+    type MowingInput = z.input<typeof mowingFormSchema>;
+    type MowingOutput = z.output<typeof mowingFormSchema>;
+    type WateringInput = z.input<typeof wateringFormSchema>;
+    type WateringOutput = z.output<typeof wateringFormSchema>;
+    type FertilizingInput = z.input<typeof fertilizingFormSchema>;
+    type FertilizingOutput = z.output<typeof fertilizingFormSchema>;
 
     // --- Mowing Form ---
-    const mowForm = useForm({
-        resolver: zodResolver(MowingEventSchema.omit({ id: true, date: true })),
+    const mowForm = useForm<MowingInput, unknown, MowingOutput>({
+        resolver: zodResolver(mowingFormSchema),
         defaultValues: { type: "mow", cutHeightInches: 2.5, grassBagged: false, deckCleaned: false, notes: "" },
     });
+    const grassBagged = useWatch({ control: mowForm.control, name: "grassBagged" }) ?? false;
+    const deckCleaned = useWatch({ control: mowForm.control, name: "deckCleaned" }) ?? false;
 
-    const onMowSubmit = (data: any) => {
+    const onMowSubmit = (data: MowingOutput) => {
         addMowingEvent(data);
         mowForm.reset();
         setOpen(false);
     };
 
     // --- Watering Form ---
-    const waterForm = useForm({
-        resolver: zodResolver(WateringEventSchema.omit({ id: true, date: true })),
+    const waterForm = useForm<WateringInput, unknown, WateringOutput>({
+        resolver: zodResolver(wateringFormSchema),
         defaultValues: { type: "water", durationMinutes: 30, waterAmountInches: 0.5, notes: "" },
     });
 
-    const onWaterSubmit = (data: any) => {
+    const onWaterSubmit = (data: WateringOutput) => {
         addWateringEvent(data);
         waterForm.reset();
         setOpen(false);
     };
 
     // --- Fertilizing Form ---
-    const fertilizeForm = useForm({
-        resolver: zodResolver(FertilizingEventSchema.omit({ id: true, date: true })),
+    const fertilizeForm = useForm<FertilizingInput, unknown, FertilizingOutput>({
+        resolver: zodResolver(fertilizingFormSchema),
         defaultValues: { type: "fertilize", productName: "", npkRatio: "", applicationRate: "", notes: "" },
     });
 
-    const onFertilizeSubmit = (data: any) => {
+    const onFertilizeSubmit = (data: FertilizingOutput) => {
         addFertilizingEvent(data);
         fertilizeForm.reset();
         setOpen(false);
@@ -106,7 +116,7 @@ export function LawnEventForms() {
                                 <Label className="text-sm font-bold text-white cursor-pointer" htmlFor="grassBagged">Bagged Grass?</Label>
                                 <Switch
                                     id="grassBagged"
-                                    checked={mowForm.watch("grassBagged")}
+                                    checked={grassBagged}
                                     onCheckedChange={(c) => mowForm.setValue("grassBagged", c)}
                                 />
                             </div>
@@ -114,7 +124,7 @@ export function LawnEventForms() {
                                 <Label className="text-sm font-bold text-white cursor-pointer" htmlFor="deckCleaned">Cleaned Mower Deck?</Label>
                                 <Switch
                                     id="deckCleaned"
-                                    checked={mowForm.watch("deckCleaned")}
+                                    checked={deckCleaned}
                                     onCheckedChange={(c) => mowForm.setValue("deckCleaned", c)}
                                 />
                             </div>

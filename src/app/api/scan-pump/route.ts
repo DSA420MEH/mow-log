@@ -7,38 +7,55 @@ const ai = genkit({
     model: gemini15Flash,
 });
 
-export async function POST(req: Request) {
-    try {
-        const { imageBase64 } = await req.json();
+const scanPumpRequestSchema = z.object({
+    imageBase64: z.string().min(32, "Image data is required."),
+});
 
-        if (!imageBase64 || !process.env.GEMINI_API_KEY) {
-            // Mock mode if no key or no image
-            return NextResponse.json({
-                liters: 45.32,
-                pricePerLiter: 1.65,
-                total: 74.78,
-            });
+const scanPumpOutputSchema = z.object({
+    liters: z.number().positive(),
+    pricePerLiter: z.number().positive(),
+});
+
+export async function POST(req: Request) {
+    if (!process.env.GEMINI_API_KEY) {
+        return NextResponse.json(
+            {
+                error: "Pump scanning is not configured. Set GEMINI_API_KEY to enable AI scan.",
+            },
+            { status: 503 }
+        );
+    }
+
+    try {
+        const parsedBody = scanPumpRequestSchema.safeParse(await req.json());
+        if (!parsedBody.success) {
+            return NextResponse.json({ error: "A valid pump image is required." }, { status: 400 });
         }
+        const { imageBase64 } = parsedBody.data;
 
         const result = await ai.generate({
             prompt: [
-                { text: "Extract the number of liters and the price per liter from this gas pump display. Only return JSON with 'liters' and 'pricePerLiter' as number values." },
+                { text: "Extract liters and pricePerLiter from this gas pump display. Return JSON only with numeric fields: liters, pricePerLiter." },
                 { media: { url: `data:image/jpeg;base64,${imageBase64}` } }
             ],
             output: {
-                schema: z.object({
-                    liters: z.number(),
-                    pricePerLiter: z.number()
-                })
+                schema: scanPumpOutputSchema
             }
         });
 
         if (!result.output) {
             throw new Error("No output generated");
         }
-        return NextResponse.json(result.output);
+
+        const validated = scanPumpOutputSchema.parse(result.output);
+        const total = Number((validated.liters * validated.pricePerLiter).toFixed(2));
+
+        return NextResponse.json({
+            ...validated,
+            total,
+        });
     } catch (error) {
         console.error("Genkit scan error:", error);
-        return NextResponse.json({ error: "Failed to scan pump" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to scan pump image. Try a clearer photo." }, { status: 500 });
     }
 }

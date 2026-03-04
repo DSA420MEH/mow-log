@@ -349,22 +349,6 @@ function splitCellVertically(
 
     for (const x of validXs) {
         try {
-            // Create a vertical cutting line through the entire height
-            const cutLine: Position[] = [
-                [x, bbox[1] - 0.001],
-                [x, bbox[3] + 0.001],
-            ];
-
-            // Split using a thin rectangle as a cutting blade
-            const epsilon = 0.0000001;
-            const blade = turf.polygon([[
-                [x - epsilon, bbox[1] - 0.01],
-                [x + epsilon, bbox[1] - 0.01],
-                [x + epsilon, bbox[3] + 0.01],
-                [x - epsilon, bbox[3] + 0.01],
-                [x - epsilon, bbox[1] - 0.01],
-            ]]);
-
             const left = turf.intersect(turf.featureCollection([
                 remaining,
                 turf.bboxPolygon([bbox[0], bbox[1], x, bbox[3]])

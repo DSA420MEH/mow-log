@@ -4,6 +4,7 @@ import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 import { ActiveMowBanner } from "@/components/ActiveMowBanner";
 import { PWAProvider } from "next-pwa-pack";
+import { WebMCPProvider } from "@/components/WebMCPProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,13 +33,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
-        {isDev ? (
-          <div className="relative flex min-h-screen flex-col">
-            <div className="flex-1">{children}</div>
-            <ActiveMowBanner />
-            <BottomNav />
-            <script dangerouslySetInnerHTML={{
-              __html: `
+        <WebMCPProvider>
+          {isDev ? (
+            <div className="relative flex min-h-screen flex-col">
+              <div className="flex-1">{children}</div>
+              <ActiveMowBanner />
+              <BottomNav />
+              <script dangerouslySetInnerHTML={{
+                __html: `
               if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
                   for(let registration of registrations) {
@@ -47,16 +49,16 @@ export default function RootLayout({
                 });
               }
             ` }} />
-          </div>
-        ) : (
-          <PWAProvider>
-            <div className="relative flex min-h-screen flex-col">
-              <div className="flex-1">{children}</div>
-              <ActiveMowBanner />
-              <BottomNav />
             </div>
-            <script dangerouslySetInnerHTML={{
-              __html: `
+          ) : (
+            <PWAProvider>
+              <div className="relative flex min-h-screen flex-col">
+                <div className="flex-1">{children}</div>
+                <ActiveMowBanner />
+                <BottomNav />
+              </div>
+              <script dangerouslySetInnerHTML={{
+                __html: `
               if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
                   console.log('[PWA] New version detected, reloading...');
@@ -64,8 +66,9 @@ export default function RootLayout({
                 });
               }
             ` }} />
-          </PWAProvider>
-        )}
+            </PWAProvider>
+          )}
+        </WebMCPProvider>
       </body>
     </html>
   );

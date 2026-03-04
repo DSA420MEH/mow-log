@@ -6,7 +6,6 @@ import { useStore } from "@/lib/store";
 import { optimizeRoute, type OptimizedRoute } from "@/lib/route-optimizer";
 import { useState, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
 
 // Leaflet uses `window` so must be dynamically imported with SSR disabled
 const LawnMap = dynamic(() => import("@/components/LawnMap"), {

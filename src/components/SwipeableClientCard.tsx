@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon, Scissors } from "lucide-react";
 import type { CutHeightRecommendation } from "@/lib/cut-height-calc";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -121,7 +121,6 @@ export function SwipeableClientCard({
     onEdit,
     InlineMowTimer,
 }: SwipeableClientCardProps) {
-    const router = useRouter();
     const [activePanel, setActivePanel] = useState(0);
     const [showCutExplanation, setShowCutExplanation] = useState(false);
     const touchStartX = useRef(0);
@@ -430,9 +429,12 @@ export function SwipeableClientCard({
                         {client.routeScreenshot && client.routeScreenshot.startsWith("data:image") ? (
                             <div className="space-y-4">
                                 <div className="rounded-xl overflow-hidden border border-white/10 bg-white/[0.02] shadow-2xl">
-                                    <img
+                                    <Image
                                         src={client.routeScreenshot}
                                         alt={`Route for ${client.name}`}
+                                        width={1200}
+                                        height={800}
+                                        unoptimized
                                         className="w-full h-auto object-contain"
                                     />
                                 </div>
@@ -448,10 +450,12 @@ export function SwipeableClientCard({
                             </div>
                         ) : (
                             <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black group min-h-[220px]">
-                                <img
+                                <Image
                                     src="/lawn-placeholder.png"
                                     alt="Lawn View"
-                                    className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000"
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 420px"
+                                    className="absolute inset-0 object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-[#1a201c] via-[#1a201c]/40 to-transparent" />
 

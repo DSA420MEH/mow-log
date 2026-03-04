@@ -4,15 +4,48 @@
 import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 
+interface WebMCPToolInputSchema {
+    type: "object";
+    properties: Record<string, unknown>;
+    required?: string[];
+}
+
+interface WebMCPTool {
+    name: string;
+    description: string;
+    inputSchema: WebMCPToolInputSchema;
+    execute: (input?: unknown) => Promise<{ success: boolean; message: string }>;
+}
+
+interface WebMCPContextProviderOptions {
+    tools: WebMCPTool[];
+}
+
+interface WebMCPContextBridge {
+    provideContext: (options: WebMCPContextProviderOptions) => void;
+}
+
+interface LogGasExpenseInput {
+    liters: number;
+    pricePerLiter: number;
+}
+
+function isLogGasExpenseInput(input: unknown): input is LogGasExpenseInput {
+    if (typeof input !== "object" || input === null) return false;
+    const candidate = input as Record<string, unknown>;
+    return (
+        typeof candidate.liters === "number" &&
+        Number.isFinite(candidate.liters) &&
+        typeof candidate.pricePerLiter === "number" &&
+        Number.isFinite(candidate.pricePerLiter)
+    );
+}
+
 // Extended navigator type for WebMCP draft
 declare global {
     interface Navigator {
-        modelContext?: {
-            provideContext: (options: any) => void;
-        };
-        mmodelContext?: {
-            provideContext: (options: any) => void;
-        };
+        modelContext?: WebMCPContextBridge;
+        mmodelContext?: WebMCPContextBridge;
     }
 }
 
@@ -50,7 +83,10 @@ export function WebMCPProvider({ children }: { children: React.ReactNode }) {
                             },
                             required: ["liters", "pricePerLiter"]
                         },
-                        execute: async (input: { liters: number; pricePerLiter: number }) => {
+                        execute: async (input) => {
+                            if (!isLogGasExpenseInput(input)) {
+                                return { success: false, message: "Invalid gas log input." };
+                            }
                             addGasLog({
                                 liters: input.liters,
                                 pricePerLiter: input.pricePerLiter,

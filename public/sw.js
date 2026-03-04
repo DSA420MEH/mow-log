@@ -82,7 +82,7 @@ self.addEventListener("fetch", (event) => {
             new Response(JSON.stringify({ ts: Date.now() }))
           );
           return response;
-        } catch (err) {
+        } catch {
           // If there is any cache — return it!
           if (cached) return cached;
           // If there is no cache — offline.html
