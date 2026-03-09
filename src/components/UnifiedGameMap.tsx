@@ -48,8 +48,14 @@ interface NominatimResult {
     class?: string;
 }
 
+// ─── Props ──────────────────────────────────────
+interface UnifiedGameMapProps {
+    editingClientId?: string | null;
+    onSaveBoundaries?: (clientId: string, lawnBoundary: Feature<Polygon> | null, obstacles: Feature<Polygon>[]) => void;
+}
+
 // ─── Component ──────────────────────────────────
-export default function UnifiedGameMap() {
+export default function UnifiedGameMap({ editingClientId = null, onSaveBoundaries }: UnifiedGameMapProps) {
     const mapRef = useRef<L.Map | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -72,6 +78,9 @@ export default function UnifiedGameMap() {
         activeRouteStops, currentRouteStopIndex,
         activeMowSessionId
     } = useStore();
+
+    const isClientEditing = !!editingClientId;
+    const editingClient = editingClientId ? clients.find(c => c.id === editingClientId) : null;
 
     // ─── Initialize Map ─────────────────────────
     useEffect(() => {
@@ -112,7 +121,7 @@ export default function UnifiedGameMap() {
 
     // ─── Update Draw Control When Mode Changes ──
     // Enables drawing *only* when we are NOT in active drive/mow mode
-    const isEditingMode = !activeRouteStops || activeRouteStops.length === 0;
+    const isEditingMode = isClientEditing || (!activeRouteStops || activeRouteStops.length === 0);
 
     useEffect(() => {
         const map = mapRef.current;
@@ -191,10 +200,64 @@ export default function UnifiedGameMap() {
         });
     }, [drawMode, isEditingMode]);
 
+    // ─── SCENARIO 0: Client Editing Mode ─────────────────────────────────
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !isClientEditing || !editingClient) return;
+
+        // Clear everything and set up for this specific client
+        lawnLayerRef.current?.clearLayers();
+        obstacleLayerRef.current?.clearLayers();
+        macroRouteLayerRef.current?.clearLayers();
+        routeLayerRef.current?.clearLayers();
+
+        if (editingClient.lat && editingClient.lng) {
+            map.flyTo([editingClient.lat, editingClient.lng], 20, { duration: 1.2, animate: true });
+
+            // Add a marker for the client
+            const clientIcon = L.divIcon({
+                className: "custom-leaflet-icon",
+                html: `
+                    <div class="relative flex items-center justify-center w-8 h-8">
+                        <div class="absolute inset-0 rounded-full bg-cyan-500/30 animate-ping"></div>
+                        <div class="w-6 h-6 rounded-full bg-cyan-500 border-2 border-white shadow-lg flex items-center justify-center relative z-10 text-white shadow-black/50">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                        </div>
+                    </div>
+                `,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+            });
+            L.marker([editingClient.lat, editingClient.lng], { icon: clientIcon }).addTo(macroRouteLayerRef.current!);
+        }
+
+        // Load existing boundaries if any
+        if (editingClient.lawnBoundary) {
+            L.geoJSON(editingClient.lawnBoundary, {
+                style: { color: "#aaff00", weight: 2, fillOpacity: 0.1, fillColor: "#aaff00" }
+            }).addTo(lawnLayerRef.current!);
+            setLawnPolygon(editingClient.lawnBoundary);
+        } else {
+            setLawnPolygon(null);
+        }
+
+        if (editingClient.obstacles && editingClient.obstacles.length > 0) {
+            editingClient.obstacles.forEach(obs => {
+                L.geoJSON(obs, {
+                    style: { color: "#ff4444", weight: 2, fillOpacity: 0.3, fillColor: "#ff4444" }
+                }).addTo(obstacleLayerRef.current!);
+            });
+            setObstacles(editingClient.obstacles);
+        } else {
+            setObstacles([]);
+        }
+
+    }, [editingClientId, editingClient, isClientEditing]);
+
     // ─── Cinematic Camera Transitions ─────────────────────────────────
     useEffect(() => {
         const map = mapRef.current;
-        if (!map) return;
+        if (!map || isClientEditing) return;  // Skip when editing a client (handled by SCENARIO 0)
 
         lawnLayerRef.current?.clearLayers();
         obstacleLayerRef.current?.clearLayers();
@@ -305,5 +368,49 @@ export default function UnifiedGameMap() {
         }
     }, [activeRouteStops, currentRouteStopIndex, activeMowSessionId, clients, homeLat, homeLng, homeLawnBoundary, homeObstacles]);
 
-    return <div ref={mapContainerRef} className="absolute inset-0 z-0 w-full h-full bg-[#0a0f0d]" />;
+    return (
+        <>
+            <div ref={mapContainerRef} className="absolute inset-0 z-0 w-full h-full bg-[#0a0f0d]" />
+
+            {/* Editing Mode Controls Overlay */}
+            {isClientEditing && editingClient && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 animate-in slide-in-from-bottom-4 fade-in duration-300">
+                    {/* Draw Mode Toggle */}
+                    <div className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl p-1.5 flex gap-1 shadow-2xl">
+                        <button
+                            onClick={() => setDrawMode("lawn")}
+                            className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${drawMode === 'lawn'
+                                ? 'bg-primary/20 text-primary border border-primary/30 shadow-[0_0_15px_rgba(204,255,0,0.2)]'
+                                : 'text-white/50 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            🌿 Lawn
+                        </button>
+                        <button
+                            onClick={() => setDrawMode("obstacle")}
+                            className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${drawMode === 'obstacle'
+                                ? 'bg-red-500/20 text-red-400 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                                : 'text-white/50 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            ⚠️ Obstacle
+                        </button>
+                    </div>
+
+                    {/* Save Button */}
+                    <button
+                        onClick={() => {
+                            if (onSaveBoundaries && editingClientId) {
+                                onSaveBoundaries(editingClientId, lawnPolygon, obstacles);
+                            }
+                        }}
+                        className="px-6 py-3 rounded-xl bg-primary text-black font-black text-xs uppercase tracking-widest shadow-[0_0_30px_rgba(204,255,0,0.3)] hover:scale-105 transition-all flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
+                        Save
+                    </button>
+                </div>
+            )}
+        </>
+    );
 }

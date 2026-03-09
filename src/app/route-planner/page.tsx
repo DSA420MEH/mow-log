@@ -5,7 +5,8 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
     MapPin, Navigation, Home, Route as RouteIcon, ExternalLink,
     Fuel, ArrowLeft, Zap, GripVertical, PauseCircle, Play,
-    AlertTriangle, CheckCircle2, Image as ImageIcon, Clock
+    AlertTriangle, CheckCircle2, Image as ImageIcon, Clock,
+    Pencil, X, Save
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { optimizeRoute, recalculateRoute, type OptimizedRoute } from "@/lib/route-optimizer";
@@ -73,8 +74,12 @@ function RoutePlannerContent() {
         clients, homeAddress, homeLat, homeLng, setHomeAddress, fuelCostPerKm,
         activeRouteStops, currentRouteStopIndex, startDriveMode, advanceRouteStop, cancelDriveMode,
         startMowSession, endMowSession, toggleMowBreak, toggleMowStuck, sessions, activeMowSessionId,
-        activeWorkdaySessionId, startWorkdaySession, endWorkdaySession, toggleWorkdayBreak
+        activeWorkdaySessionId, startWorkdaySession, endWorkdaySession, toggleWorkdayBreak,
+        saveClientRoute
     } = useStore();
+
+    const [editingClientId, setEditingClientId] = useState<string | null>(null);
+    const editingClient = editingClientId ? clients.find(c => c.id === editingClientId) : null;
 
     const clientsWithCoords = clients.filter(c => c.lat && c.lng);
 
@@ -181,7 +186,13 @@ function RoutePlannerContent() {
     return (
         <div className="relative w-full h-[100dvh] overflow-hidden bg-black text-foreground font-sans">
             {/* 1. Map Background (Z: 0) */}
-            <UnifiedGameMap />
+            <UnifiedGameMap editingClientId={editingClientId} onSaveBoundaries={(clientId, lawnBoundary, obstacles) => {
+                const client = clients.find(c => c.id === clientId);
+                if (client && client.lat && client.lng) {
+                    saveClientRoute(clientId, client.routeScreenshot || '', client.lat, client.lng, lawnBoundary || undefined, obstacles.length > 0 ? obstacles : undefined);
+                }
+                setEditingClientId(null);
+            }} />
 
             {/* 2. HUD Overlays (Z: 10) */}
             <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
@@ -287,27 +298,75 @@ function RoutePlannerContent() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-1.5 max-h-[30vh] overflow-y-auto pr-1">
+                                    <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1 custom-scrollbar">
                                         {clients.map(client => {
                                             const hasCoords = !!(client.lat && client.lng);
+                                            const isSelected = selectedClientIds.has(client.id);
+                                            const hasBoundary = !!client.lawnBoundary;
                                             return (
-                                                <button
+                                                <div
                                                     key={client.id}
-                                                    onClick={() => hasCoords && toggleClient(client.id)}
-                                                    disabled={!hasCoords}
-                                                    className={`w-full px-3 py-2.5 rounded-lg text-left text-xs flex items-center justify-between transition-all border ${!hasCoords ? "bg-red-500/5 border-red-500/10 text-white/30 cursor-not-allowed" : selectedClientIds.has(client.id)
-                                                        ? "bg-primary/10 border-primary/30 text-primary drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]"
-                                                        : "bg-black/40 border-white/5 text-white/60 hover:bg-white/5"
+                                                    className={`rounded-xl text-xs transition-all border overflow-hidden ${!hasCoords
+                                                            ? "bg-red-500/5 border-red-500/10 opacity-50"
+                                                            : isSelected
+                                                                ? "bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(204,255,0,0.15)]"
+                                                                : "bg-black/40 border-white/5 hover:bg-white/[0.03]"
                                                         }`}
                                                 >
-                                                    <span className="font-bold truncate pr-2">
-                                                        {client.name}
-                                                        {!hasCoords && <span className="ml-2 text-[9px] text-red-500/80">(NO GPS DATA)</span>}
-                                                    </span>
-                                                    <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${!hasCoords ? "border-red-500/20" : selectedClientIds.has(client.id) ? "border-primary bg-primary text-black" : "border-white/30"}`}>
-                                                        {selectedClientIds.has(client.id) && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                                    {/* Top row: checkbox + name + edit */}
+                                                    <div className="flex items-center gap-2 px-3 py-2.5">
+                                                        {/* Checkbox */}
+                                                        <button
+                                                            onClick={() => hasCoords && toggleClient(client.id)}
+                                                            disabled={!hasCoords}
+                                                            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${!hasCoords
+                                                                    ? "border-red-500/20 cursor-not-allowed"
+                                                                    : isSelected
+                                                                        ? "border-primary bg-primary text-black"
+                                                                        : "border-white/30 hover:border-white/50"
+                                                                }`}
+                                                        >
+                                                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                                                        </button>
+
+                                                        {/* Name + Address */}
+                                                        <button
+                                                            onClick={() => hasCoords && toggleClient(client.id)}
+                                                            disabled={!hasCoords}
+                                                            className="flex-1 text-left min-w-0"
+                                                        >
+                                                            <div className={`font-bold truncate ${isSelected ? 'text-primary' : hasCoords ? 'text-white/80' : 'text-white/30'}`}>
+                                                                {client.name}
+                                                            </div>
+                                                            <div className={`text-[10px] truncate mt-0.5 ${isSelected ? 'text-primary/60' : 'text-white/30'}`}>
+                                                                {client.address || 'No address'}
+                                                            </div>
+                                                        </button>
+
+                                                        {/* Status indicators */}
+                                                        <div className="flex items-center gap-1 shrink-0">
+                                                            {!hasCoords && (
+                                                                <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold uppercase">No GPS</span>
+                                                            )}
+                                                            {hasCoords && hasBoundary && (
+                                                                <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold uppercase" title="Lawn boundary saved">✓ Map</span>
+                                                            )}
+                                                            {/* Edit Button */}
+                                                            {hasCoords && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setEditingClientId(client.id);
+                                                                    }}
+                                                                    className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 hover:bg-primary/20 hover:border-primary/30 hover:text-primary text-white/40 flex items-center justify-center transition-all"
+                                                                    title="Edit lawn boundaries"
+                                                                >
+                                                                    <Pencil className="w-3 h-3" />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </button>
+                                                </div>
                                             );
                                         })}
                                     </div>
@@ -525,6 +584,41 @@ function RoutePlannerContent() {
                         </div>
                     )}
                 </div>
+
+                {/* ─── CLIENT EDITING OVERLAY ─── */}
+                {editingClient && (
+                    <div className="absolute inset-x-0 top-20 z-30 flex justify-center pointer-events-none px-4 animate-in slide-in-from-top-4 fade-in duration-300">
+                        <div className="pointer-events-auto bg-black/80 backdrop-blur-2xl border border-primary/30 rounded-2xl p-5 shadow-[0_0_40px_rgba(204,255,0,0.15)] max-w-md w-full relative overflow-hidden">
+                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent" />
+                            <div className="flex items-start justify-between mb-4">
+                                <div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-primary mb-1 flex items-center gap-1.5">
+                                        <Pencil className="w-3 h-3" /> Editing Boundaries
+                                    </div>
+                                    <h3 className="text-xl font-black text-white tracking-tight">{editingClient.name}</h3>
+                                    <p className="text-white/40 text-xs font-mono mt-0.5">{editingClient.address}</p>
+                                </div>
+                                <button
+                                    onClick={() => setEditingClientId(null)}
+                                    className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-400 text-white/40 flex items-center justify-center transition-all"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <p className="text-white/50 text-[11px] leading-relaxed mb-4">
+                                Use the <span className="text-primary font-bold">drawing tools</span> on the right side of the map to outline the lawn boundary (green) and mark obstacles (red). Your changes are saved when you click Save.
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setEditingClientId(null)}
+                                    className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 font-bold uppercase tracking-widest text-[10px] transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             </div>
         </div>
