@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useStore, BillingType, Client } from "@/lib/store";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,50 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
 
     const [billingType, setBillingType] = useState<BillingType>("PerCut");
     const [amount, setAmount] = useState("");
+
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setAddress(val);
+
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+        if (val.trim().length > 3) {
+            setIsSearchingSuggestions(true);
+            debounceTimerRef.current = setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+                    const data = await res.json();
+                    setSuggestions(data);
+                } catch {
+                    setSuggestions([]);
+                }
+                setIsSearchingSuggestions(false);
+            }, 600);
+        } else {
+            setSuggestions([]);
+            setIsSearchingSuggestions(false);
+        }
+    };
+
+    const selectSuggestion = (sug: any) => {
+        const adr = sug.address || {};
+        const houseNumber = adr.house_number || "";
+        const road = adr.road || "";
+        const street = `${houseNumber} ${road}`.trim();
+        const cityVal = adr.city || adr.town || adr.village || adr.municipality || "";
+        const zipVal = adr.postcode || "";
+
+        // Only overwrite if we got some parsed data, else fallback to raw 
+        setAddress(street || sug.display_name.split(",")[0]);
+        if (cityVal) setCity(cityVal);
+        if (zipVal) setZip(zipVal);
+
+        setSuggestions([]);
+    };
 
     // Initialize/Reset form
     useEffect(() => {
@@ -182,9 +226,25 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
                     {/* Step 1: Location */}
                     {step === 1 && (
                         <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-4">
-                            <div className="space-y-2">
+                            <div className="space-y-2 relative">
                                 <Label htmlFor="address" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Street Address</Label>
-                                <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="bg-white/[0.03] border-white/10 focus-visible:ring-primary h-12" placeholder="123 Main St" />
+                                <Input id="address" value={address} onChange={handleAddressChange} className="bg-white/[0.03] border-white/10 focus-visible:ring-primary h-12" placeholder="123 Main St" />
+
+                                {/* Autocomplete Dropdown */}
+                                {suggestions.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-black/90 border border-white/10 rounded-xl shadow-2xl backdrop-blur-3xl z-50 overflow-hidden text-sm font-mono max-h-60 overflow-y-auto">
+                                        {suggestions.map((sug, idx) => (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => selectSuggestion(sug)}
+                                                className="w-full text-left px-4 py-3 border-b border-white/5 hover:bg-primary/20 text-white transition-colors last:border-0"
+                                            >
+                                                {sug.display_name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
