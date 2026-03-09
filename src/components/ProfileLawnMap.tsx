@@ -14,6 +14,7 @@ interface ProfileLawnMapProps {
     initialLawnBoundary?: Feature<Polygon>;
     initialObstacles?: Feature<Polygon>[];
     onSave: (lawnBoundary?: Feature<Polygon>, obstacles?: Feature<Polygon>[]) => void;
+    onLocationChange?: (lat: number, lng: number) => void;
 }
 
 const homeIcon = L.divIcon({
@@ -31,7 +32,7 @@ const homeIcon = L.divIcon({
     popupAnchor: [0, -16],
 });
 
-export default function ProfileLawnMap({ homeLat, homeLng, initialLawnBoundary, initialObstacles, onSave }: ProfileLawnMapProps) {
+export default function ProfileLawnMap({ homeLat, homeLng, initialLawnBoundary, initialObstacles, onSave, onLocationChange }: ProfileLawnMapProps) {
     const mapRef = useRef<L.Map | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const drawControlRef = useRef<L.Control.Draw | null>(null);
@@ -82,7 +83,13 @@ export default function ProfileLawnMap({ homeLat, homeLng, initialLawnBoundary, 
             });
         }
 
-        L.marker([homeLat, homeLng], { icon: homeIcon }).addTo(map);
+        const marker = L.marker([homeLat, homeLng], { icon: homeIcon, draggable: true }).addTo(map);
+        marker.on("dragend", (e) => {
+            const coords = e.target.getLatLng();
+            if (onLocationChange) {
+                onLocationChange(coords.lat, coords.lng);
+            }
+        });
 
         mapRef.current = map;
 

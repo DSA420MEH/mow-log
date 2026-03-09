@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useStore } from "@/lib/store";
 import { UserCircle, MapPin, Search, Wrench, Save, CheckCircle2 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -22,9 +22,48 @@ export default function ProfilePage() {
     );
     const [savedStatus, setSavedStatus] = useState<string | null>(null);
 
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
     const handleSaveProfile = () => {
         updateProfile(nameInput, addressInput, savedCoords?.lat, savedCoords?.lng);
         setSavedStatus("Profile basic details saved.");
+        setTimeout(() => setSavedStatus(null), 3000);
+    };
+
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setAddressInput(val);
+
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+        if (val.trim().length > 3) {
+            setIsSearchingSuggestions(true);
+            debounceTimerRef.current = setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+                    const data = await res.json();
+                    setSuggestions(data);
+                } catch {
+                    setSuggestions([]);
+                }
+                setIsSearchingSuggestions(false);
+            }, 600);
+        } else {
+            setSuggestions([]);
+            setIsSearchingSuggestions(false);
+        }
+    };
+
+    const selectSuggestion = (sug: any) => {
+        const lat = parseFloat(sug.lat);
+        const lng = parseFloat(sug.lon);
+        setAddressInput(sug.display_name);
+        setSuggestions([]);
+        setSavedCoords({ lat, lng });
+        updateProfile(nameInput, sug.display_name, lat, lng);
+        setSavedStatus("Address located and saved.");
         setTimeout(() => setSavedStatus(null), 3000);
     };
 
@@ -40,6 +79,7 @@ export default function ProfilePage() {
                 setSavedCoords({ lat, lng });
                 updateProfile(nameInput, addressInput, lat, lng);
                 setSavedStatus("Address located and saved.");
+                setSuggestions([]);
                 setTimeout(() => setSavedStatus(null), 3000);
             }
         } catch (err) {
@@ -86,22 +126,39 @@ export default function ProfilePage() {
 
                     <div>
                         <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Base Operations Address</label>
-                        <div className="flex items-center gap-2">
-                            <MapPin className="w-5 h-5 text-primary opacity-70 shrink-0" />
-                            <input
-                                type="text"
-                                value={addressInput}
-                                onChange={(e) => setAddressInput(e.target.value)}
-                                placeholder="123 Base Ave, City, State"
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"
-                            />
-                            <button
-                                onClick={handleGeocode}
-                                disabled={isGeocoding}
-                                className="p-3 bg-white/10 text-white rounded-xl hover:bg-primary hover:text-black transition-colors shrink-0 disabled:opacity-50"
-                            >
-                                <Search className="w-5 h-5" />
-                            </button>
+                        <div className="relative">
+                            <div className="flex items-center gap-2">
+                                <MapPin className="w-5 h-5 text-primary opacity-70 shrink-0" />
+                                <input
+                                    type="text"
+                                    value={addressInput}
+                                    onChange={handleAddressChange}
+                                    placeholder="123 Base Ave, City, State"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"
+                                />
+                                <button
+                                    onClick={handleGeocode}
+                                    disabled={isGeocoding}
+                                    className="p-3 bg-white/10 text-white rounded-xl hover:bg-primary hover:text-black transition-colors shrink-0 disabled:opacity-50"
+                                >
+                                    <Search className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Autocomplete Dropdown */}
+                            {suggestions.length > 0 && (
+                                <div className="absolute top-full left-7 right-14 mt-2 bg-black/90 border border-white/10 rounded-xl shadow-2xl backdrop-blur-3xl z-50 overflow-hidden text-sm font-mono max-h-60 overflow-y-auto">
+                                    {suggestions.map((sug, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => selectSuggestion(sug)}
+                                            className="w-full text-left px-4 py-3 border-b border-white/5 hover:bg-primary/20 hover:text-white transition-colors last:border-0"
+                                        >
+                                            {sug.display_name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -122,23 +179,31 @@ export default function ProfilePage() {
 
             {/* Base Map / Testing Ground */}
             <section className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 backdrop-blur-xl shrink-0">
-                <div className="flex flex-col mb-4">
-                    <h2 className="text-sm font-black text-white/80 uppercase tracking-widest flex items-center gap-2 mb-1">
-                        <MapPin className="w-4 h-4 text-emerald-400" /> Tactical Base Perimeter (Test Ground)
+                <div className="flex flex-col mb-4 bg-primary/10 border border-primary/20 rounded-xl p-4">
+                    <h2 className="text-sm font-black text-primary uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <MapPin className="w-4 h-4" /> Tactical Base Perimeter
                     </h2>
-                    <p className="text-white/40 text-xs font-mono">
-                        Lock in your base operations boundaries. This serves as a test map for drawing polygons.
+                    <p className="text-white/70 text-xs font-mono mb-2">
+                        1. Type your address above to snap the map. <br />
+                        2. <strong>DRAG THE HOME PIN</strong> (<MapPin className="w-3 h-3 inline" />) to precisely position it directly on top of your house.<br />
+                        3. Trace your boundaries to simulate the tactical HUD.
                     </p>
                 </div>
 
                 {savedCoords ? (
-                    <div className="h-64 w-full rounded-xl overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/5">
+                    <div className="h-64 w-full rounded-xl overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/5 relative">
                         <ProfileLawnMap
                             homeLat={savedCoords.lat}
                             homeLng={savedCoords.lng}
                             initialLawnBoundary={homeLawnBoundary}
                             initialObstacles={homeObstacles}
                             onSave={handleSaveBoundary}
+                            onLocationChange={(lat, lng) => {
+                                setSavedCoords({ lat, lng });
+                                updateProfile(nameInput, addressInput, lat, lng);
+                                setSavedStatus("Pin location corrected manually.");
+                                setTimeout(() => setSavedStatus(null), 2500);
+                            }}
                         />
                     </div>
                 ) : (
