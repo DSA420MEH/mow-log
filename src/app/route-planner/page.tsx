@@ -75,7 +75,7 @@ function RoutePlannerContent() {
         activeRouteStops, currentRouteStopIndex, startDriveMode, advanceRouteStop, cancelDriveMode,
         startMowSession, endMowSession, toggleMowBreak, toggleMowStuck, sessions, activeMowSessionId,
         activeWorkdaySessionId, startWorkdaySession, endWorkdaySession, toggleWorkdayBreak,
-        saveClientRoute
+        saveClientRoute, updateClient
     } = useStore();
 
     const [editingClientId, setEditingClientId] = useState<string | null>(null);
@@ -192,6 +192,8 @@ function RoutePlannerContent() {
                     saveClientRoute(clientId, client.routeScreenshot || '', client.lat, client.lng, lawnBoundary || undefined, obstacles.length > 0 ? obstacles : undefined);
                 }
                 setEditingClientId(null);
+            }} onPinMoved={(clientId, lat, lng) => {
+                updateClient(clientId, { lat, lng });
             }} />
 
             {/* 2. HUD Overlays (Z: 10) */}
@@ -307,10 +309,10 @@ function RoutePlannerContent() {
                                                 <div
                                                     key={client.id}
                                                     className={`rounded-xl text-xs transition-all border overflow-hidden ${!hasCoords
-                                                            ? "bg-red-500/5 border-red-500/10 opacity-50"
-                                                            : isSelected
-                                                                ? "bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(204,255,0,0.15)]"
-                                                                : "bg-black/40 border-white/5 hover:bg-white/[0.03]"
+                                                        ? "bg-red-500/5 border-red-500/10 opacity-50"
+                                                        : isSelected
+                                                            ? "bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(204,255,0,0.15)]"
+                                                            : "bg-black/40 border-white/5 hover:bg-white/[0.03]"
                                                         }`}
                                                 >
                                                     {/* Top row: checkbox + name + edit */}
@@ -320,10 +322,10 @@ function RoutePlannerContent() {
                                                             onClick={() => hasCoords && toggleClient(client.id)}
                                                             disabled={!hasCoords}
                                                             className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${!hasCoords
-                                                                    ? "border-red-500/20 cursor-not-allowed"
-                                                                    : isSelected
-                                                                        ? "border-primary bg-primary text-black"
-                                                                        : "border-white/30 hover:border-white/50"
+                                                                ? "border-red-500/20 cursor-not-allowed"
+                                                                : isSelected
+                                                                    ? "border-primary bg-primary text-black"
+                                                                    : "border-white/30 hover:border-white/50"
                                                                 }`}
                                                         >
                                                             {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}

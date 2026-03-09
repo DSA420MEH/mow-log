@@ -52,10 +52,11 @@ interface NominatimResult {
 interface UnifiedGameMapProps {
     editingClientId?: string | null;
     onSaveBoundaries?: (clientId: string, lawnBoundary: Feature<Polygon> | null, obstacles: Feature<Polygon>[]) => void;
+    onPinMoved?: (clientId: string, lat: number, lng: number) => void;
 }
 
 // ─── Component ──────────────────────────────────
-export default function UnifiedGameMap({ editingClientId = null, onSaveBoundaries }: UnifiedGameMapProps) {
+export default function UnifiedGameMap({ editingClientId = null, onSaveBoundaries, onPinMoved }: UnifiedGameMapProps) {
     const mapRef = useRef<L.Map | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -214,21 +215,32 @@ export default function UnifiedGameMap({ editingClientId = null, onSaveBoundarie
         if (editingClient.lat && editingClient.lng) {
             map.flyTo([editingClient.lat, editingClient.lng], 20, { duration: 1.2, animate: true });
 
-            // Add a marker for the client
+            // Add a DRAGGABLE marker for the client
             const clientIcon = L.divIcon({
                 className: "custom-leaflet-icon",
                 html: `
-                    <div class="relative flex items-center justify-center w-8 h-8">
+                    <div class="relative flex items-center justify-center w-10 h-10" style="cursor:grab">
                         <div class="absolute inset-0 rounded-full bg-cyan-500/30 animate-ping"></div>
-                        <div class="w-6 h-6 rounded-full bg-cyan-500 border-2 border-white shadow-lg flex items-center justify-center relative z-10 text-white shadow-black/50">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                        <div class="w-8 h-8 rounded-full bg-cyan-500 border-3 border-white shadow-lg flex items-center justify-center relative z-10 text-white shadow-black/50" style="border-width:3px">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
                         </div>
                     </div>
                 `,
-                iconSize: [32, 32],
-                iconAnchor: [16, 16],
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
             });
-            L.marker([editingClient.lat, editingClient.lng], { icon: clientIcon }).addTo(macroRouteLayerRef.current!);
+            const marker = L.marker([editingClient.lat, editingClient.lng], { icon: clientIcon, draggable: true }).addTo(macroRouteLayerRef.current!);
+
+            // When user drags the pin, update the client's coordinates
+            marker.on('dragend', () => {
+                const pos = marker.getLatLng();
+                if (onPinMoved && editingClientId) {
+                    onPinMoved(editingClientId, pos.lat, pos.lng);
+                }
+            });
+
+            // Add a tooltip so user knows they can drag
+            marker.bindTooltip('Drag to reposition', { direction: 'top', offset: [0, -20], className: 'leaflet-tooltip-dark' });
         }
 
         // Load existing boundaries if any

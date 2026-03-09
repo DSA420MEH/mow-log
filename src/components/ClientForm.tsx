@@ -18,7 +18,7 @@ interface ClientFormProps {
 }
 
 export function ClientForm({ customTrigger, initialData, open: externalOpen, onOpenChange: externalOnOpenChange }: ClientFormProps) {
-    const { addClient, updateClient } = useStore();
+    const { addClient, updateClient, homeLat, homeLng } = useStore();
     const [internalOpen, setInternalOpen] = useState(false);
 
     // Use external open state if provided, otherwise use internal
@@ -62,7 +62,14 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
             setIsSearchingSuggestions(true);
             debounceTimerRef.current = setTimeout(async () => {
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+                    // Bias search toward user's home region (or default to Moncton, NB area)
+                    const centerLat = homeLat || 46.1;
+                    const centerLng = homeLng || -64.8;
+                    // Create a ~50km viewbox around the home location
+                    const viewbox = `${centerLng - 0.5},${centerLat + 0.5},${centerLng + 0.5},${centerLat - 0.5}`;
+                    const res = await fetch(
+                        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1&countrycodes=ca&viewbox=${viewbox}&bounded=0`
+                    );
                     const data = await res.json();
                     setSuggestions(data);
                 } catch {
