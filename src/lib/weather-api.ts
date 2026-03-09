@@ -118,6 +118,34 @@ export async function getCutHeightWeatherData(lat: number, lon: number): Promise
 
 // ── Combined Widget Data ───────────────────────────────────────────────────────
 
+export interface HourlyForecast {
+    /** ISO time strings for next hours */
+    time: string[];
+    /** Precipitation probability (0-100) per hour */
+    precipitationProbability: number[];
+    /** Temperature °C per hour */
+    temperature: number[];
+    /** Wind speed km/h per hour */
+    windSpeed: number[];
+}
+
+export interface DailyForecast {
+    /** ISO date strings */
+    dates: string[];
+    /** Daily precipitation sum (mm) */
+    precipitationSum: number[];
+    /** Daily max precip probability (0-100) */
+    precipitationProbabilityMax: number[];
+    /** Daily mean temperature °C */
+    temperatureMean: number[];
+    /** Daily max wind speed km/h */
+    windSpeedMax: number[];
+    /** Daily max temp °C */
+    temperatureMax: number[];
+    /** Daily min temp °C */
+    temperatureMin: number[];
+}
+
 export interface FullWeatherData {
     current: WeatherData;
     /** Past 5 days of daily precipitation totals (mm), oldest first */
@@ -130,6 +158,10 @@ export interface FullWeatherData {
     totalPastRainMm: number;
     /** Today's High/Low Temp */
     todayHighLow?: { high: number; low: number };
+    /** Hourly forecast data for the next ~12 hours */
+    hourly?: HourlyForecast;
+    /** Extended 7-day daily forecast + past 7 days of daily data */
+    daily?: DailyForecast;
 }
 
 /**
@@ -140,9 +172,9 @@ export async function getFullWeatherData(lat: number, lon: number): Promise<Full
     try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
             `&current_weather=true` +
-            `&hourly=relative_humidity_2m` +
-            `&daily=precipitation_sum,cloud_cover_mean,temperature_2m_max,temperature_2m_min` +
-            `&past_days=5&forecast_days=4&timezone=auto`;
+            `&hourly=relative_humidity_2m,precipitation_probability,temperature_2m,wind_speed_10m` +
+            `&daily=precipitation_sum,cloud_cover_mean,temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_probability_max,wind_speed_10m_max` +
+            `&past_days=7&forecast_days=8&timezone=auto`;
 
         const response = await fetch(url, { next: { revalidate: 3600 } });
         if (!response.ok) throw new Error(`Open-Meteo status: ${response.status}`);
@@ -161,9 +193,9 @@ export async function getFullWeatherData(lat: number, lon: number): Promise<Full
 
         const today = new Date().toISOString().slice(0, 10);
         const todayIdx = dates.indexOf(today);
-        const splitIdx = todayIdx >= 0 ? todayIdx : 5;
+        const splitIdx = todayIdx >= 0 ? todayIdx : 7;
 
-        const pastPrecipitation = precip.slice(0, splitIdx);
+        const pastPrecipitation = precip.slice(Math.max(0, splitIdx - 5), splitIdx);
         // Include today + next 3 days as forecast (up to 4 days)
         const forecastPrecipitation = precip.slice(splitIdx, splitIdx + 4);
 
@@ -183,7 +215,32 @@ export async function getFullWeatherData(lat: number, lon: number): Promise<Full
             ? { high: tMax[todayIdx], low: tMin[todayIdx] }
             : undefined;
 
-        return { current, pastPrecipitation, forecastPrecipitation, forecastDayLabels, totalPastRainMm, todayHighLow };
+        // ── Hourly forecast for next ~12 hours (mow safety check) ──
+        const hourlyTimes: string[] = data.hourly?.time ?? [];
+        const nowIso = new Date().toISOString();
+        const currentHourIdx = hourlyTimes.findIndex((t: string) => t >= nowIso.slice(0, 13));
+        const hourlySliceStart = currentHourIdx >= 0 ? currentHourIdx : 0;
+        const hourlySliceEnd = hourlySliceStart + 12;
+
+        const hourly: HourlyForecast = {
+            time: hourlyTimes.slice(hourlySliceStart, hourlySliceEnd),
+            precipitationProbability: (data.hourly?.precipitation_probability ?? []).slice(hourlySliceStart, hourlySliceEnd).map((v: number | null) => v ?? 0),
+            temperature: (data.hourly?.temperature_2m ?? []).slice(hourlySliceStart, hourlySliceEnd).map((v: number | null) => v ?? 0),
+            windSpeed: (data.hourly?.wind_speed_10m ?? []).slice(hourlySliceStart, hourlySliceEnd).map((v: number | null) => v ?? 0),
+        };
+
+        // ── Extended daily forecast for "Best Day" + growth rate ──
+        const daily: DailyForecast = {
+            dates,
+            precipitationSum: precip,
+            precipitationProbabilityMax: (data.daily?.precipitation_probability_max ?? []).map((v: number | null) => v ?? 0),
+            temperatureMean: (data.daily?.temperature_2m_mean ?? []).map((v: number | null) => v ?? 0),
+            windSpeedMax: (data.daily?.wind_speed_10m_max ?? []).map((v: number | null) => v ?? 0),
+            temperatureMax: tMax.map((v: number | null) => v ?? 0),
+            temperatureMin: tMin.map((v: number | null) => v ?? 0),
+        };
+
+        return { current, pastPrecipitation, forecastPrecipitation, forecastDayLabels, totalPastRainMm, todayHighLow, hourly, daily };
     } catch (error) {
         console.error("Failed to fetch full weather data:", error);
         return null;
