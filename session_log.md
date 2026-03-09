@@ -87,3 +87,43 @@
 ## Notes
 - `@types/mapbox__point-geometry` package in `node_modules` contains no `.d.ts` entry file in this environment, which caused TS to fail when auto-loading all `@types`.
 - Explicit `compilerOptions.types` prevents that broken package from being implicitly loaded while preserving required globals.
+
+---
+
+# Session Log — 2026-03-09
+
+## Context
+- Resumed MowLog after multi-session break. Found 809 lines of uncommitted UI overhaul work.
+- Committed and deployed all pending UI work (dashboard header, stats charts, bottom nav, client card visual overhaul, weather widget enhancements, PWA offline banner).
+- Built and deployed 3 Lawn Care Intelligence features from the planning backlog.
+
+## Progress
+- [x] Committed and pushed all pending UI overhaul work → Vercel deployed.
+- [x] Built "Is It Safe to Mow Today?" banner (YES/CAUTION/NO) — `src/lib/lawn-intelligence.ts`
+- [x] Built "Best Day to Mow This Week" scored chart (0-100 per day) — 5-day horizontal bar chart
+- [x] Built Growth Rate Estimator (per-client grass growth since last cut)
+- [x] Enhanced Open-Meteo fetch with hourly precip probability, temp, wind + 7-day daily forecast — single API call
+- [x] Created `src/hooks/use-lawn-intelligence.ts` with shared weather cache
+- [x] Created `src/components/LawnIntelligence.tsx` (MowSafetyBanner + BestDayBanner)
+- [x] Verified build passes, visually verified on localhost, pushed to main → Vercel deployed.
+
+## Verification
+- `npm run build`: **pass** (0 errors)
+- Browser verification: All three intelligence features rendering correctly
+- Mow Safety showing amber CAUTION for 3.5mm rain yesterday
+- Best Day chart showing Today: 68, Tomorrow: 75 (recommended), Wed-Fri: 10-20
+
+## New Files
+- `src/lib/lawn-intelligence.ts` — 325 lines, 3 pure-function calculators
+- `src/hooks/use-lawn-intelligence.ts` — useLawnIntelligence + useGrowthEstimate hooks
+- `src/components/LawnIntelligence.tsx` — MowSafetyBanner + BestDayBanner UI
+
+## Next Atomic Actions
+- Wire per-client growth estimate display into SwipeableClientCard ✅ DONE
+- Implement "One-Third Rule" warning ✅ DONE
+- Implement weighted soil wetness model ✅ DONE
+- Client specific weather coordinates hook integration ✅ DONE
+
+## Next Actions
+- Seasonal Adjustment (Priority: Low)
+- Temperature-Based "Don't Mow in Heat" Warning (Priority: Low)

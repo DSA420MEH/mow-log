@@ -68,6 +68,8 @@ export interface CutHeightWeatherData {
     forecastPrecipitation: number[];
     /** Next 3 days of forecasted average cloud cover (0-100%) */
     forecastCloudCover: number[];
+    /** Next 3 days of forecasted max temperature (°C) */
+    forecastTemperature: number[];
 }
 
 /**
@@ -83,7 +85,7 @@ export interface CutHeightWeatherData {
  */
 export async function getCutHeightWeatherData(lat: number, lon: number): Promise<CutHeightWeatherData | null> {
     try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,cloud_cover_mean&past_days=5&forecast_days=3&timezone=auto`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,cloud_cover_mean,temperature_2m_max&past_days=5&forecast_days=3&timezone=auto`;
 
         const response = await fetch(url, {
             next: { revalidate: 3600 } // Cache for 1 hour
@@ -97,6 +99,7 @@ export async function getCutHeightWeatherData(lat: number, lon: number): Promise
         const dates: string[] = data.daily?.time ?? [];
         const precip: number[] = data.daily?.precipitation_sum ?? [];
         const cloud: number[] = data.daily?.cloud_cover_mean ?? [];
+        const temp: number[] = data.daily?.temperature_2m_max ?? [];
 
         // Today's date in the API timezone
         const today = new Date().toISOString().slice(0, 10);
@@ -108,8 +111,9 @@ export async function getCutHeightWeatherData(lat: number, lon: number): Promise
         const pastPrecipitation = precip.slice(0, splitIdx).map(v => v ?? 0);
         const forecastPrecipitation = precip.slice(splitIdx).map(v => v ?? 0);
         const forecastCloudCover = cloud.slice(splitIdx).map(v => v ?? 0);
+        const forecastTemperature = temp.slice(splitIdx).map(v => v ?? 20);
 
-        return { pastPrecipitation, forecastPrecipitation, forecastCloudCover };
+        return { pastPrecipitation, forecastPrecipitation, forecastCloudCover, forecastTemperature };
     } catch (error) {
         console.error("Failed to fetch cut height weather data:", error);
         return null;

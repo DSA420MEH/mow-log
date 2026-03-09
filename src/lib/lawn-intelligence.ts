@@ -327,3 +327,168 @@ export function computeBestMowDays(daily: DailyForecast | undefined): BestDayRes
 
     return { scores, bestDays, recommendation };
 }
+
+// ── 4. One-Third Rule ────────────────────────────────────────────────────────
+
+export interface OneThirdRuleResult {
+    /** Whether the one-third rule is violated */
+    violated: boolean;
+    /** Current estimated height in inches (target + growth) */
+    estimatedCurrentHeight: number;
+    /** The target cut height in inches */
+    targetHeight: number;
+    /** Percentage of blade that would be removed */
+    removalPercent: number;
+    /** First-pass height suggestion if violated */
+    firstPassHeight: number;
+    /** Human-readable message */
+    message: string;
+}
+
+/**
+ * Checks if cutting to the target height would violate the one-third rule.
+ *
+ * Best practice: never remove more than 1/3 of the blade length in a single cut.
+ * If violated, suggests a staged cut approach (higher first, then target in 3-4 days).
+ *
+ * @param growthInches - Estimated grass growth since last cut
+ * @param targetHeightIn - Desired cut height (e.g., 2.5")
+ * @param lastCutHeightIn - Height of the last cut (defaults to targetHeight)
+ */
+export function checkOneThirdRule(
+    growthInches: number,
+    targetHeightIn: number,
+    lastCutHeightIn?: number,
+): OneThirdRuleResult {
+    const lastHeight = lastCutHeightIn ?? targetHeightIn;
+    const currentHeight = lastHeight + growthInches;
+    const removalInches = currentHeight - targetHeightIn;
+    const removalPercent = currentHeight > 0 ? (removalInches / currentHeight) * 100 : 0;
+
+    const violated = removalPercent > 33.3;
+
+    let firstPassHeight = targetHeightIn;
+    let message: string;
+
+    if (violated) {
+        // Calculate the highest allowed cut that still respects 1/3 rule
+        // One-third rule: max removal = currentHeight / 3
+        // So minimum remaining = currentHeight × 2/3
+        firstPassHeight = Math.round((currentHeight * (2 / 3)) * 4) / 4; // Round to nearest 0.25"
+
+        // Ensure first pass is at least above target
+        if (firstPassHeight <= targetHeightIn) {
+            firstPassHeight = targetHeightIn + 0.5;
+        }
+
+        message = `Grass is ~${currentHeight.toFixed(1)}" — cutting to ${targetHeightIn}" removes ${removalPercent.toFixed(0)}% (>33%). Cut at ${firstPassHeight}" first, then ${targetHeightIn}" in 3-4 days.`;
+    } else {
+        message = `Safe to cut to ${targetHeightIn}" — only removing ${removalPercent.toFixed(0)}% of blade length.`;
+    }
+
+    return {
+        violated,
+        estimatedCurrentHeight: currentHeight,
+        targetHeight: targetHeightIn,
+        removalPercent,
+        firstPassHeight,
+        message,
+    };
+}
+
+// ── 5. Weighted Soil Wetness Model ───────────────────────────────────────────
+
+export interface SoilWetnessResult {
+    /** Weighted wetness score (0 = bone dry, 100+ = saturated) */
+    wetnessScore: number;
+    /** Human-readable soil condition */
+    condition: 'dry' | 'normal' | 'damp' | 'wet' | 'saturated';
+    /** Weighted rain total (mm, recent rain weighted 3× more) */
+    weightedRainMm: number;
+    /** Human-readable summary */
+    summary: string;
+    /** Whether soil is too wet for safe mowing */
+    tooWetToMow: boolean;
+}
+
+/**
+ * Computes soil wetness using an exponential decay model.
+ *
+ * Instead of a flat 5-day rain sum, weights recent rain exponentially heavier:
+ *   weightedRain = Σ(precip[i] × decay^daysAgo)
+ *
+ * This better models soil drying:
+ * - 20mm over 5 days = soil absorbed it → OK to mow
+ * - 20mm today = soil saturated → wait 24h
+ *
+ * @param pastPrecipitation - Array of daily precip (mm), most recent last
+ * @param decay - Decay factor per day (0.6 = recent rain weighs 3× older rain)
+ */
+export function computeSoilWetness(
+    pastPrecipitation: number[],
+    decay: number = 0.6,
+): SoilWetnessResult {
+    if (pastPrecipitation.length === 0) {
+        return {
+            wetnessScore: 0,
+            condition: 'dry',
+            weightedRainMm: 0,
+            summary: 'No precipitation data available',
+            tooWetToMow: false,
+        };
+    }
+
+    // Calculate weighted rain: most recent day = full weight, older days decay
+    let weightedRainMm = 0;
+    const len = pastPrecipitation.length;
+
+    for (let i = 0; i < len; i++) {
+        const daysAgo = len - 1 - i; // 0 = most recent
+        const weight = Math.pow(decay, daysAgo);
+        weightedRainMm += pastPrecipitation[i] * weight;
+    }
+
+    // Also check the last 2 days for burst detection
+    const last2DaysRain =
+        (pastPrecipitation[len - 1] ?? 0) + (pastPrecipitation[len - 2] ?? 0);
+
+    // Wetness score: normalize weighted rain to a 0-100+ scale
+    // Scale: 0-5mm weighted = dry, 5-12mm = normal, 12-20mm = damp, 20-30mm = wet, 30+ = saturated
+    const wetnessScore = Math.min(100, (weightedRainMm / 30) * 100);
+
+    let condition: SoilWetnessResult['condition'];
+    let summary: string;
+    let tooWetToMow = false;
+
+    if (last2DaysRain > 15) {
+        // Burst detection: heavy rain in last 2 days regardless of weighted average
+        condition = 'saturated';
+        summary = `${last2DaysRain.toFixed(1)}mm rain in last 2 days — soil is saturated`;
+        tooWetToMow = true;
+    } else if (weightedRainMm > 25) {
+        condition = 'saturated';
+        summary = `Heavy recent rainfall (${weightedRainMm.toFixed(1)}mm weighted) — wait for soil to dry`;
+        tooWetToMow = true;
+    } else if (weightedRainMm > 15) {
+        condition = 'wet';
+        summary = `Ground is still wet from recent rain (${weightedRainMm.toFixed(1)}mm weighted)`;
+        tooWetToMow = false; // Can mow with caution
+    } else if (weightedRainMm > 8) {
+        condition = 'damp';
+        summary = `Soil slightly damp — good enough to mow`;
+    } else if (weightedRainMm > 3) {
+        condition = 'normal';
+        summary = `Normal soil moisture — ideal mowing conditions`;
+    } else {
+        condition = 'dry';
+        summary = `Dry conditions — mow at higher cut to protect roots`;
+    }
+
+    return {
+        wetnessScore,
+        condition,
+        weightedRainMm,
+        summary,
+        tooWetToMow,
+    };
+}

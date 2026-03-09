@@ -6,18 +6,13 @@
  */
 
 import type { CutHeightWeatherData } from './weather-api';
+import { computeSoilWetness } from './lawn-intelligence';
 
 // ── Tunable Thresholds ─────────────────────────────────────────────────────────
 // These are lawn-care heuristics — adjust based on grass type and region.
 
-/** Max total past rain (mm) over 5 days to consider "drought-like" */
-const DROUGHT_PAST_RAIN_THRESHOLD = 5;
-
 /** Max total forecast rain (mm) over 3 days to confirm drought outlook */
 const DROUGHT_FORECAST_RAIN_THRESHOLD = 3;
-
-/** Min total past rain (mm) over 5 days to consider "heavy rain" */
-const HEAVY_RAIN_PAST_THRESHOLD = 25;
 
 /** Min total forecast rain (mm) over 3 days to confirm continued wet conditions */
 const HEAVY_RAIN_FORECAST_THRESHOLD = 10;
@@ -42,48 +37,104 @@ export interface CutHeightRecommendation {
 // ── Calculator ─────────────────────────────────────────────────────────────────
 
 /**
+ * Computes a seasonal offset for grass cutting height.
+ * Spring: Fast growth (-0.25")
+ * Summer: Heat stress (+0.25")
+ * Fall/Winter: Normal/Dormant (0)
+ */
+function getSeasonalOffset(): number {
+    const month = new Date().getMonth(); // 0-indexed (Jan = 0)
+
+    // Spring (Mar:2, Apr:3, May:4)
+    if (month >= 2 && month <= 4) return -0.25;
+
+    // Peak Summer (Jul:6, Aug:7)
+    if (month >= 6 && month <= 7) return 0.25;
+
+    // Early Summer (Jun) & Fall/Winter (Sep-Feb)
+    return 0;
+}
+
+/**
  * Computes a cut height recommendation based on recent and forecasted weather.
  *
  * @param data - Historical + forecast weather data from Open-Meteo
  * @returns A recommendation object with level, label, explanation, and icon
  */
 export function computeCutHeightRecommendation(data: CutHeightWeatherData): CutHeightRecommendation {
-    const totalPastRain = data.pastPrecipitation.reduce((sum, v) => sum + v, 0);
+    // 1. Calculate soil wetness using the new exponential decay model
+    const soilState = computeSoilWetness(data.pastPrecipitation);
+
+    // 2. Calculate forecast parameters
     const totalForecastRain = data.forecastPrecipitation.reduce((sum, v) => sum + v, 0);
     const avgCloudCover = data.forecastCloudCover.length > 0
         ? data.forecastCloudCover.reduce((sum, v) => sum + v, 0) / data.forecastCloudCover.length
         : 50;
 
-    // Drought detection: very little past rain + dry forecast
-    if (totalPastRain < DROUGHT_PAST_RAIN_THRESHOLD && totalForecastRain < DROUGHT_FORECAST_RAIN_THRESHOLD) {
-        return {
-            level: 'high',
-            label: 'Cut at 3.0"',
-            explanation: `Only ${totalPastRain.toFixed(1)}mm rain in 5 days with ${totalForecastRain.toFixed(1)}mm forecast — keep grass tall to retain moisture`,
-            icon: 'drought',
-            recommendedHeightIn: 3.0,
-        };
+    // 3. Check for extreme heat (e.g., current > 28°C or next 3 days > 32°C)
+    // For now, we'll approximate with forecastTemperature (which represents next 3 days)
+    const maxForecastTemp = data.forecastTemperature?.length > 0
+        ? Math.max(...data.forecastTemperature)
+        : 20;
+
+    const isExtremeHeat = maxForecastTemp > 32;
+
+    let baseHeight = 2.5;
+    let level: CutHeightLevel = 'standard';
+    let explanation = '';
+    let icon: CutHeightIcon = 'standard';
+
+    // Drought detection: dry soil + dry forecast
+    if (soilState.condition === 'dry' && totalForecastRain < DROUGHT_FORECAST_RAIN_THRESHOLD) {
+        level = 'high';
+        baseHeight = 3.0;
+        explanation = `Dry conditions with minimal rain forecast — keep grass tall to retain moisture`;
+        icon = 'drought';
+    }
+    // Fast growth detection: saturated/wet soil + (more rain OR sunny skies)
+    else if (
+        (soilState.condition === 'saturated' || soilState.condition === 'wet') &&
+        (totalForecastRain > HEAVY_RAIN_FORECAST_THRESHOLD || avgCloudCover < SUNNY_CLOUD_COVER_THRESHOLD)
+    ) {
+        level = 'low';
+        baseHeight = soilState.condition === 'saturated' ? 1.5 : 2.0;
+        explanation = `${soilState.summary}${avgCloudCover < SUNNY_CLOUD_COVER_THRESHOLD ? ' + sunny forecast' : ' + more rain coming'} — rapid growth expected, cut shorter`;
+        icon = 'growth';
+    }
+    // Default
+    else {
+        level = 'standard';
+        baseHeight = 2.5;
+        explanation = `${soilState.summary} — standard 2.5" is recommended`;
+        icon = 'standard';
     }
 
-    // Fast growth detection: heavy past rain + (more rain OR sunny skies)
-    if (totalPastRain > HEAVY_RAIN_PAST_THRESHOLD && (totalForecastRain > HEAVY_RAIN_FORECAST_THRESHOLD || avgCloudCover < SUNNY_CLOUD_COVER_THRESHOLD)) {
-        // Very wet (>40mm past 5 days) → 1.5", otherwise 2.0"
-        const heightIn = totalPastRain > 40 ? 1.5 : 2.0;
-        return {
-            level: 'low',
-            label: `Cut at ${heightIn.toFixed(1)}"`,
-            explanation: `${totalPastRain.toFixed(1)}mm rain in 5 days${avgCloudCover < SUNNY_CLOUD_COVER_THRESHOLD ? ' + sunny forecast' : ' + more rain coming'} — rapid growth expected, cut shorter`,
-            icon: 'growth',
-            recommendedHeightIn: heightIn,
-        };
+    // 4. Apply Seasonal & Heat Adjustments
+    let finalHeight = baseHeight + getSeasonalOffset();
+
+    // Heat stress overrides Spring offset
+    if (isExtremeHeat) {
+        finalHeight += 0.25; // Add extra 0.25" to protect roots
+        explanation += `. HEAT WARNING (>32°C): Raised cut to ${finalHeight.toFixed(2)}" to prevent scorching.`;
+        if (getSeasonalOffset() < 0) {
+            explanation += ' (Cancelled Spring drop)';
+        }
+        level = 'high';
+        icon = 'drought';
+    } else if (getSeasonalOffset() > 0) {
+        explanation += ` (Summer adjustment: +0.25")`;
+    } else if (getSeasonalOffset() < 0) {
+        explanation += ` (Spring adjustment: -0.25")`;
     }
 
-    // Default: standard conditions
+    // Ensure height doesn't go below absolute minimum bounds (e.g. 1.25) or over max (3.5)
+    finalHeight = Math.max(1.25, Math.min(3.5, finalHeight));
+
     return {
-        level: 'standard',
-        label: 'Cut at 2.5"',
-        explanation: `Normal conditions — ${totalPastRain.toFixed(1)}mm past rain, ${totalForecastRain.toFixed(1)}mm forecast`,
-        icon: 'standard',
-        recommendedHeightIn: 2.5,
+        level,
+        label: `Cut at ${finalHeight.toFixed(2)}"`,
+        explanation,
+        icon,
+        recommendedHeightIn: finalHeight,
     };
 }

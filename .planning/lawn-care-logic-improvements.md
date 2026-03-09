@@ -21,7 +21,7 @@ The owner's baseline: 2.5" standard, 3.0" drought, 2.0" wet, 1.5" very wet.
 
 ## TODO: Better Lawn Care Intelligence
 
-### 1. "Is It Safe to Mow Today?" Card
+### 1. "Is It Safe to Mow Today?" Card ✅ DONE (2026-03-09)
 **Priority: HIGH**
 A clear YES / CAUTION / NO banner on the dashboard telling the user if today is a good day to mow.
 
@@ -37,7 +37,7 @@ Check the next 4 hours of `precipitation_probability` — if any hour > 40%, fla
 
 ---
 
-### 2. Growth Rate Estimator (since last cut)
+### 2. Growth Rate Estimator (since last cut) ✅ DONE (2026-03-09)
 **Priority: HIGH**
 The app already tracks `daysSinceLastCut` per client (from sessions).
 Combine that with weather to estimate how much the grass has probably grown.
@@ -58,7 +58,7 @@ Data needed: daily avg temperature for each day since last cut — fetch from Op
 
 ---
 
-### 3. "One-Third Rule" Warning
+### 3. "One-Third Rule" Warning ✅ DONE (2026-03-09)
 **Priority: MEDIUM**
 Lawn best practice: never cut more than 1/3 of the blade length at once.
 If current height is 2.5" and the grass has grown to 4"+, cutting to 2.5" in one pass
@@ -71,7 +71,7 @@ Warning logic:
 
 ---
 
-### 4. Soil Wetness / Drainage Model
+### 4. Soil Wetness / Drainage Model ✅ DONE (2026-03-09)
 **Priority: MEDIUM**
 Total mm of rain is not the full picture — timing and intensity matter:
 - 20mm over 5 days = soil absorbed it, fine to mow
@@ -87,7 +87,7 @@ how the array is weighted in `cut-height-calc.ts`.
 
 ---
 
-### 5. "Best Day to Mow This Week" Recommendation
+### 5. "Best Day to Mow This Week" Recommendation ✅ DONE (2026-03-09)
 **Priority: MEDIUM**
 Looking at the 7-day forecast, highlight which days are ideal for mowing.
 
@@ -105,7 +105,7 @@ windspeed_10m_max,relative_humidity_2m_mean` — all free.
 
 ---
 
-### 6. Seasonal Adjustment
+### 6. Seasonal Adjustment ✅ DONE (2026-03-09)
 **Priority: LOW**
 The current logic has no concept of season. Improvements:
 
@@ -122,7 +122,7 @@ to whatever `computeCutHeightRecommendation` returns.
 
 ---
 
-### 7. Rainfall Since Last Cut (Per-Client)
+### 7. Rainfall Since Last Cut (Per-Client) ✅ DONE (2026-03-09)
 **Priority: MEDIUM**
 Right now, the weather data is global (home location, same for all clients).
 A more accurate signal: how much rain has fallen *since the last mow at that specific client*.
@@ -138,7 +138,7 @@ not just the last 5 days globally.
 
 ---
 
-### 8. Temperature-Based "Don't Mow in Heat" Warning
+### 8. Temperature-Based "Don't Mow in Heat" Warning ✅ DONE (2026-03-09)
 **Priority: LOW**
 If current temperature > 28°C or forecast high > 32°C:
 - Warn: "Mow before 9am or after 5pm — heat stress can brown cut edges"

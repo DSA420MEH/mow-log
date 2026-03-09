@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon, CheckCircle2 } from "lucide-react";
+import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon, CheckCircle2, Leaf } from "lucide-react";
 import type { CutHeightRecommendation } from "@/lib/cut-height-calc";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useGrowthEstimate } from "@/hooks/use-lawn-intelligence";
+import { checkOneThirdRule } from "@/lib/lawn-intelligence";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ClientData {
@@ -130,6 +132,12 @@ export function SwipeableClientCard({
     const isSwiping = useRef(false);
 
     const panelCount = 3;
+
+    // -- Lawn Intelligence --
+    const growth = useGrowthEstimate(client.id);
+    const oneThirdRule = growth && cutHeight
+        ? checkOneThirdRule(growth.estimatedGrowthInches, cutHeight.recommendedHeightIn)
+        : null;
 
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
         touchStartX.current = e.touches[0].clientX;
@@ -265,7 +273,34 @@ export function SwipeableClientCard({
                             RATE MISSING
                         </div>
                     )}
+
+                    {/* Growth Estimate Badge */}
+                    {growth && (
+                        <div className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black tracking-tight border",
+                            growth.urgent
+                                ? "bg-rose-500/15 text-rose-400 border-rose-500/30 shadow-[0_0_10px_rgba(243,24,96,0.15)] animate-pulse"
+                                : "bg-emerald-500/15 text-emerald-400 border-emerald-500/20"
+                        )}>
+                            <Leaf className="w-3.5 h-3.5" />
+                            {growth.estimatedGrowthInches > 0
+                                ? `+${growth.estimatedGrowthInches.toFixed(1)}"`
+                                : `No Growth`}
+                        </div>
+                    )}
                 </div>
+
+                {/* One-Third Rule Warning */}
+                {oneThirdRule?.violated && (
+                    <div className="mt-2 mx-0 px-3 py-2 rounded-lg text-[10.5px] font-medium leading-tight bg-rose-500/10 border border-rose-500/20 text-rose-200">
+                        <div className="flex items-start gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                            <span>
+                                <strong className="font-bold text-rose-300">1/3 Rule:</strong> {oneThirdRule.message}
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Cut Height Explanation (expandable) */}
                 {cutHeight && showCutExplanation && (

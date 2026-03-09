@@ -39,6 +39,7 @@ export function useCutHeight(lat: number, lng: number) {
                         pastPrecipitation: data.pastPrecipitation,
                         forecastPrecipitation: data.forecastPrecipitation,
                         forecastCloudCover: [], // cloud cover not needed for recommendation accuracy
+                        forecastTemperature: data.daily?.temperatureMax?.slice(0, 3) ?? [],
                     });
                     cachedResult = result;
                     cacheKey = key;
