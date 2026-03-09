@@ -25,8 +25,13 @@ export interface OptimizedRoute {
     googleMapsUrl: string;
 }
 
+// ─── Shared Utilities ──────────────────────────────────────
+
+// Average fuel consumption: 8L per 100km (reasonable truck/van estimate)
+export const FUEL_CONSUMPTION_L_PER_KM = 0.08;
+
 // Haversine distance between two lat/lng points in kilometers
-function haversineKm(
+export function haversineKm(
     lat1: number, lng1: number,
     lat2: number, lng2: number
 ): number {
@@ -40,9 +45,6 @@ function haversineKm(
         Math.sin(dLng / 2) * Math.sin(dLng / 2);
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
-// Average fuel consumption: 8L per 100km (reasonable truck/van estimate)
-const FUEL_CONSUMPTION_L_PER_KM = 0.08;
 
 export function optimizeRoute(
     homeLat: number,
@@ -107,4 +109,49 @@ export function optimizeRoute(
     const estimatedFuelLiters = totalDist * FUEL_CONSUMPTION_L_PER_KM;
 
     return { stops, totalDistanceKm: totalDist, estimatedFuelCost, estimatedFuelLiters, googleMapsUrl };
+}
+
+/**
+ * Recalculates route metrics based on a manually reordered array of stops.
+ */
+export function recalculateRoute(
+    homeLat: number,
+    homeLng: number,
+    stops: RouteStop[],
+    fuelCostPerKm: number = 0.15
+): OptimizedRoute {
+    if (stops.length === 0) {
+        return { stops: [], totalDistanceKm: 0, estimatedFuelCost: 0, estimatedFuelLiters: 0, googleMapsUrl: "" };
+    }
+
+    let currentLat = homeLat;
+    let currentLng = homeLng;
+    let totalDist = 0;
+
+    // Recalculate distance for each leg
+    const updatedStops = stops.map((stop) => {
+        const dist = haversineKm(currentLat, currentLng, stop.lat, stop.lng);
+        totalDist += dist;
+        currentLat = stop.lat;
+        currentLng = stop.lng;
+        return { ...stop, distanceFromPrevKm: dist };
+    });
+
+    // Return to home
+    const last = updatedStops[updatedStops.length - 1];
+    totalDist += haversineKm(last.lat, last.lng, homeLat, homeLng);
+
+    const waypoints = updatedStops.map(s => `${s.lat},${s.lng}`).join("/");
+    const googleMapsUrl = `https://www.google.com/maps/dir/${homeLat},${homeLng}/${waypoints}/${homeLat},${homeLng}`;
+
+    const estimatedFuelCost = totalDist * fuelCostPerKm;
+    const estimatedFuelLiters = totalDist * FUEL_CONSUMPTION_L_PER_KM;
+
+    return {
+        stops: updatedStops,
+        totalDistanceKm: totalDist,
+        estimatedFuelCost,
+        estimatedFuelLiters,
+        googleMapsUrl,
+    };
 }

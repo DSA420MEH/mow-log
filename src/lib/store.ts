@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { MowingEvent, WateringEvent, FertilizingEvent } from './schemas';
+import type { RouteStop } from './route-optimizer';
+import type { Feature, Polygon } from 'geojson';
 
 export type BillingType = 'Regular' | 'PerCut';
 
@@ -19,6 +21,8 @@ export interface Client {
     lat?: number;
     lng?: number;
     routeScreenshot?: string; // base64 data URL of route overlay on satellite
+    lawnBoundary?: Feature<Polygon>; // GeoJSON polygon of the outer lawn
+    obstacles?: Feature<Polygon>[]; // Array of GeoJSON obstacle polygons
 }
 
 export interface Session {
@@ -98,6 +102,10 @@ interface AppState {
     laborRate: number;       // $/hr — for profit calculations
     fuelCostPerKm: number;   // $/km — for route fuel estimates
 
+    // Active Drive Mode
+    activeRouteStops: RouteStop[] | null;
+    currentRouteStopIndex: number;
+
     // Actions
     addClient: (client: Omit<Client, 'id' | 'createdAt'>) => void;
     updateClient: (id: string, client: Partial<Client>) => void;
@@ -112,6 +120,10 @@ interface AppState {
     toggleMowBreak: () => void;
     toggleMowStuck: () => void;
 
+    startDriveMode: (stops: RouteStop[]) => void;
+    advanceRouteStop: () => void;
+    cancelDriveMode: () => void;
+
     addGasLog: (log: Omit<GasLog, 'id' | 'date'>) => void;
     addMaintenanceLog: (log: Omit<MaintenanceLog, 'id' | 'date' | 'totalCost'>) => void;
 
@@ -121,7 +133,7 @@ interface AppState {
     addFertilizingEvent: (event: Omit<FertilizingEvent, 'id' | 'date'>) => void;
 
     // Route features
-    saveClientRoute: (clientId: string, screenshot: string, lat: number, lng: number) => void;
+    saveClientRoute: (clientId: string, screenshot: string, lat: number, lng: number, lawnBoundary?: Feature<Polygon>, obstacles?: Feature<Polygon>[]) => void;
     setHomeAddress: (address: string, lat: number, lng: number) => void;
 
     // Business config
@@ -147,6 +159,8 @@ export const useStore = create<AppState>()(
             fertilizingEvents: [],
             activeWorkdaySessionId: null,
             activeMowSessionId: null,
+            activeRouteStops: null,
+            currentRouteStopIndex: 0,
             homeAddress: '',
             laborRate: 25,
             fuelCostPerKm: 0.15,
@@ -350,6 +364,22 @@ export const useStore = create<AppState>()(
                     };
                 }),
 
+            startDriveMode: (stops) =>
+                set(() => ({ activeRouteStops: stops, currentRouteStopIndex: 0 })),
+
+            advanceRouteStop: () =>
+                set((state) => {
+                    if (!state.activeRouteStops) return state;
+                    const nextIndex = state.currentRouteStopIndex + 1;
+                    if (nextIndex >= state.activeRouteStops.length) {
+                        return { activeRouteStops: null, currentRouteStopIndex: 0 };
+                    }
+                    return { currentRouteStopIndex: nextIndex };
+                }),
+
+            cancelDriveMode: () =>
+                set(() => ({ activeRouteStops: null, currentRouteStopIndex: 0 })),
+
             addGasLog: (log) =>
                 set((state) => ({
                     gasLogs: [
@@ -393,10 +423,10 @@ export const useStore = create<AppState>()(
                     ],
                 })),
 
-            saveClientRoute: (clientId, screenshot, lat, lng) =>
+            saveClientRoute: (clientId, screenshot, lat, lng, lawnBoundary, obstacles) =>
                 set((state) => ({
                     clients: state.clients.map((c) =>
-                        c.id === clientId ? { ...c, routeScreenshot: screenshot, lat, lng } : c
+                        c.id === clientId ? { ...c, routeScreenshot: screenshot, lat, lng, lawnBoundary, obstacles } : c
                     ),
                 })),
 

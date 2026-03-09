@@ -1,0 +1,101 @@
+
+> mow-log@0.1.0 lint
+> eslint
+
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\app\addresses\page.tsx
+   97:34  warning  'weatherData' is assigned a value but never used                                                @typescript-eslint/no-unused-vars
+  123:9   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\app\route-planner\page.tsx
+   52:13   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\app\route-planner\page.tsx:52:13
+  50 |                 ? new Date(endTime).getTime()
+  51 |                 : (currentBreakOrStuckStartTime ? new Date(currentBreakOrStuckStartTime).getTime() : new Date().getTime());
+> 52 |             setElapsed(Math.floor((frozenEnd - start) / 1000) - breakTimeTotal - stuckTimeTotal);
+     |             ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  53 |         }
+  54 |         return () => clearInterval(interval);
+  55 |     }, [startTime, breakTimeTotal, stuckTimeTotal, status, endTime, currentBreakOrStuckStartTime]);  react-hooks/set-state-in-effect
+  106:78   error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react/no-unescaped-entities
+  106:110  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react/no-unescaped-entities
+  271:25   error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react-hooks/rules-of-hooks
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\app\stats\page.tsx
+    1:1   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+  144:23  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\app\stats\page.tsx:144:23
+  142 |     // ΓöÇΓöÇ Aggregate Computations ΓöÇΓöÇ
+  143 |     const stats = useMemo(() => {
+> 144 |         const nowMs = Date.now();
+      |                       ^^^^^^^^^^ Cannot call impure function
+  145 |         const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+  146 |         const startOfYearMs = new Date(new Date().getFullYear(), 0, 1).getTime();
+  147 |  react-hooks/purity
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\components\DailyRouteMap.tsx
+   3:21  warning  'useRef' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  66:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\components\DailyRouteMap.tsx:66:9
+  64 |
+  65 |     useEffect(() => {
+> 66 |         setMounted(true);
+     |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  67 |     }, []);
+  68 |
+  69 |     if (!mounted) {  react-hooks/set-state-in-effect
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\components\OfflineBanner.tsx
+   5:10  warning  'cn' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  12:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\components\OfflineBanner.tsx:12:9
+  10 |     useEffect(() => {
+  11 |         // Initial check
+> 12 |         setIsOffline(!navigator.onLine);
+     |         ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  13 |
+  14 |         const handleOnline = () => setIsOffline(false);
+  15 |         const handleOffline = () => setIsOffline(true);  react-hooks/set-state-in-effect
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\hooks\use-lawn-intelligence.ts
+  110:14  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\yann_\Desktop\fred-agent\mow-log\src\hooks\use-lawn-intelligence.ts:110:14
+  108 |         const lastMowDate = new Date(clientSessions[0].endTime!);
+  109 |         const daysSinceLastCut = Math.floor(
+> 110 |             (Date.now() - lastMowDate.getTime()) / (1000 * 60 * 60 * 24)
+      |              ^^^^^^^^^^ Cannot call impure function
+  111 |         );
+  112 |
+  113 |         if (daysSinceLastCut <= 0) return null;  react-hooks/purity
+  155:8   warning  React Hook useEffect has missing dependencies: 'client' and 'clientId'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+
+Γ£û 14 problems (8 errors, 6 warnings)
+  0 errors and 2 warnings potentially fixable with the `--fix` option.
+

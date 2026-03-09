@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { WifiOff } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export function OfflineBanner() {
     const [isOffline, setIsOffline] = useState(false);
 
     useEffect(() => {
         // Initial check
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsOffline(!navigator.onLine);
 
         const handleOnline = () => setIsOffline(false);

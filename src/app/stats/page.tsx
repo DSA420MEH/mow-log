@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useStore, type Client, type Session } from "@/lib/store";
@@ -141,6 +140,7 @@ export default function StatsPage() {
 
     // ── Aggregate Computations ──
     const stats = useMemo(() => {
+        // eslint-disable-next-line react-hooks/purity
         const nowMs = Date.now();
         const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
         const startOfYearMs = new Date(new Date().getFullYear(), 0, 1).getTime();

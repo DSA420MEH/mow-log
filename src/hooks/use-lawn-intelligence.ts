@@ -106,6 +106,7 @@ export function useGrowthEstimate(clientId: string): GrowthEstimate | null {
         if (clientSessions.length === 0) return null;
 
         const lastMowDate = new Date(clientSessions[0].endTime!);
+        // eslint-disable-next-line react-hooks/purity
         const daysSinceLastCut = Math.floor(
             (Date.now() - lastMowDate.getTime()) / (1000 * 60 * 60 * 24)
         );
@@ -152,6 +153,7 @@ export function useGrowthEstimate(clientId: string): GrowthEstimate | null {
 
         fetchClientWeather();
         return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [client?.lat, client?.lng, cutDetails]);
 
     // 3. Compute growth using the most accurate weather available

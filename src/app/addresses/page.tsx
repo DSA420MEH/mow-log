@@ -7,7 +7,7 @@ import { ClientForm } from "@/components/ClientForm";
 import { Button } from "@/components/ui/button";
 import { SwipeableClientCard } from "@/components/SwipeableClientCard";
 import { MapPin, Plus, AlertTriangle, Scissors } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { SettingsModal } from "@/components/SettingsModal";
 import { cn } from "@/lib/utils";
 import { getSeedData } from "@/lib/seed-data";
@@ -15,7 +15,6 @@ import { WeatherWidget } from "@/components/WeatherWidget";
 import { useCutHeight } from "@/hooks/use-cut-height";
 import { useLawnIntelligence } from "@/hooks/use-lawn-intelligence";
 import { MowSafetyBanner, BestDayBanner } from "@/components/LawnIntelligence";
-import { estimateGrowthSinceLastCut } from "@/lib/lawn-intelligence";
 
 // Predictable avatar colors based on string hash
 const generateAvatarStyle = (name: string) => {
@@ -95,7 +94,7 @@ function InlineMowTimer({ startTime, breakTimeTotal = 0, stuckTimeTotal = 0, sta
 export default function AddressesPage() {
     const { clients, sessions, startMowSession, endMowSession, activeMowSessionId, homeAddress, homeLat, homeLng } = useStore();
     const { recommendation: cutHeightRec } = useCutHeight(homeLat || 0, homeLng || 0);
-    const { mowSafety, bestDays, weatherData } = useLawnIntelligence(homeLat || 0, homeLng || 0);
+    const { mowSafety, bestDays } = useLawnIntelligence(homeLat || 0, homeLng || 0);
 
     const activeSession = sessions.find(s => s.id === activeMowSessionId);
 
