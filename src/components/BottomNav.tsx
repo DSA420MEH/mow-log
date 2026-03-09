@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MapPin, BarChart2, ClipboardList, CalendarDays, Navigation } from "lucide-react";
+import { MapPin, BarChart2, ClipboardList, CalendarDays, Navigation, UserCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -11,6 +11,7 @@ const tabs = [
     { name: "Route", href: "/route-planner", icon: Navigation },
     { name: "Logs", href: "/logs", icon: ClipboardList },
     { name: "Calendar", href: "/calendar", icon: CalendarDays },
+    { name: "Profile", href: "/profile", icon: UserCircle },
 ];
 
 export function BottomNav() {

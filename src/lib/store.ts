@@ -132,9 +132,16 @@ interface AppState {
     addWateringEvent: (event: Omit<WateringEvent, 'id' | 'date'>) => void;
     addFertilizingEvent: (event: Omit<FertilizingEvent, 'id' | 'date'>) => void;
 
-    // Route features
+    // Route and Profile features
     saveClientRoute: (clientId: string, screenshot: string, lat: number, lng: number, lawnBoundary?: Feature<Polygon>, obstacles?: Feature<Polygon>[]) => void;
+
+    // Profile
+    userName: string;
+    homeLawnBoundary?: Feature<Polygon>;
+    homeObstacles?: Feature<Polygon>[];
     setHomeAddress: (address: string, lat: number, lng: number) => void;
+    updateProfile: (name: string, address: string, lat?: number, lng?: number) => void;
+    saveHomeBoundary: (lawnBoundary?: Feature<Polygon>, obstacles?: Feature<Polygon>[]) => void;
 
     // Business config
     setLaborRate: (rate: number) => void;
@@ -161,7 +168,13 @@ export const useStore = create<AppState>()(
             activeMowSessionId: null,
             activeRouteStops: null,
             currentRouteStopIndex: 0,
+
+            // Profile Defaults
+            userName: '',
             homeAddress: '',
+            homeLawnBoundary: undefined,
+            homeObstacles: undefined,
+
             laborRate: 25,
             fuelCostPerKm: 0.15,
 
@@ -432,6 +445,16 @@ export const useStore = create<AppState>()(
 
             setHomeAddress: (address, lat, lng) =>
                 set(() => ({ homeAddress: address, homeLat: lat, homeLng: lng })),
+
+            updateProfile: (name, address, lat, lng) =>
+                set((state) => ({
+                    userName: name,
+                    homeAddress: address,
+                    ...(lat !== undefined && lng !== undefined ? { homeLat: lat, homeLng: lng } : {})
+                })),
+
+            saveHomeBoundary: (lawnBoundary, obstacles) =>
+                set(() => ({ homeLawnBoundary: lawnBoundary, homeObstacles: obstacles })),
 
             // Business config
             setLaborRate: (rate) => set(() => ({ laborRate: rate })),
