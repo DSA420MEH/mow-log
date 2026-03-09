@@ -279,7 +279,7 @@ function RoutePlannerContent() {
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
                                         <label className="text-[10px] uppercase text-muted-foreground tracking-widest font-bold">
-                                            Targets ({clientsWithCoords.length})
+                                            Targets ({clientsWithCoords.length}/{clients.length} GPS LOCK)
                                         </label>
                                         <div className="flex gap-1">
                                             <button onClick={selectAll} className="text-[9px] px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition-colors uppercase font-bold tracking-wider">All</button>
@@ -288,21 +288,28 @@ function RoutePlannerContent() {
                                     </div>
 
                                     <div className="space-y-1.5 max-h-[30vh] overflow-y-auto pr-1">
-                                        {clientsWithCoords.map(client => (
-                                            <button
-                                                key={client.id}
-                                                onClick={() => toggleClient(client.id)}
-                                                className={`w-full px-3 py-2.5 rounded-lg text-left text-xs flex items-center justify-between transition-all border ${selectedClientIds.has(client.id)
-                                                    ? "bg-primary/10 border-primary/30 text-primary"
-                                                    : "bg-black/40 border-white/5 text-white/60 hover:bg-white/5"
-                                                    }`}
-                                            >
-                                                <span className="font-bold truncate pr-2">{client.name}</span>
-                                                <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${selectedClientIds.has(client.id) ? "border-primary bg-primary text-black" : "border-white/30"}`}>
-                                                    {selectedClientIds.has(client.id) && <CheckCircle2 className="w-2.5 h-2.5" />}
-                                                </div>
-                                            </button>
-                                        ))}
+                                        {clients.map(client => {
+                                            const hasCoords = !!(client.lat && client.lng);
+                                            return (
+                                                <button
+                                                    key={client.id}
+                                                    onClick={() => hasCoords && toggleClient(client.id)}
+                                                    disabled={!hasCoords}
+                                                    className={`w-full px-3 py-2.5 rounded-lg text-left text-xs flex items-center justify-between transition-all border ${!hasCoords ? "bg-red-500/5 border-red-500/10 text-white/30 cursor-not-allowed" : selectedClientIds.has(client.id)
+                                                        ? "bg-primary/10 border-primary/30 text-primary drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]"
+                                                        : "bg-black/40 border-white/5 text-white/60 hover:bg-white/5"
+                                                        }`}
+                                                >
+                                                    <span className="font-bold truncate pr-2">
+                                                        {client.name}
+                                                        {!hasCoords && <span className="ml-2 text-[9px] text-red-500/80">(NO GPS DATA)</span>}
+                                                    </span>
+                                                    <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${!hasCoords ? "border-red-500/20" : selectedClientIds.has(client.id) ? "border-primary bg-primary text-black" : "border-white/30"}`}>
+                                                        {selectedClientIds.has(client.id) && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 

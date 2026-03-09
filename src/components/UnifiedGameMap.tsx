@@ -68,7 +68,7 @@ export default function UnifiedGameMap() {
 
     const {
         clients,
-        homeLat, homeLng,
+        homeLat, homeLng, homeLawnBoundary, homeObstacles,
         activeRouteStops, currentRouteStopIndex,
         activeMowSessionId
     } = useStore();
@@ -251,7 +251,59 @@ export default function UnifiedGameMap() {
                 L.marker([stop.lat, stop.lng], { icon: createStopIcon(idx + 1) }).addTo(macroRouteLayerRef.current!);
             });
         }
-    }, [activeRouteStops, currentRouteStopIndex, activeMowSessionId, clients, homeLat, homeLng]);
+        // SCENARIO 3: Editing Mode / Route Planner Setup
+        else if ((!activeRouteStops || activeRouteStops.length === 0) && homeLat && homeLng) {
+
+            // Gather all points: home + any clients with coords
+            const boundsCoords: [number, number][] = [[homeLat, homeLng]];
+
+            L.marker([homeLat, homeLng], { icon: homeIcon }).addTo(macroRouteLayerRef.current!);
+
+            if (homeLawnBoundary) {
+                L.geoJSON(homeLawnBoundary, {
+                    style: { color: "#aaff00", weight: 2, fillOpacity: 0.1, fillColor: "#aaff00" }
+                }).addTo(lawnLayerRef.current!);
+            }
+
+            if (homeObstacles && homeObstacles.length > 0) {
+                homeObstacles.forEach(obs => {
+                    L.geoJSON(obs, {
+                        style: { color: "#ff4444", weight: 2, fillOpacity: 0.3, fillColor: "#ff4444" }
+                    }).addTo(obstacleLayerRef.current!);
+                });
+            }
+
+            clients.forEach(c => {
+                if (c.lat && c.lng) {
+                    boundsCoords.push([c.lat, c.lng]);
+
+                    const clientIcon = L.divIcon({
+                        className: "custom-leaflet-icon",
+                        html: `
+                            <div class="relative flex items-center justify-center w-6 h-6 hover:scale-125 transition-transform cursor-pointer">
+                                <div class="absolute inset-0 rounded-full bg-cyan-500/30 animate-pulse"></div>
+                                <div class="w-4 h-4 rounded-full bg-cyan-500 border-2 border-black shadow-lg shadow-black"></div>
+                            </div>
+                        `,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12],
+                        popupAnchor: [0, -12],
+                    });
+
+                    L.marker([c.lat, c.lng], { icon: clientIcon })
+                        .bindPopup(`<strong class="text-black font-mono uppercase tracking-wider">${c.name}</strong>`)
+                        .addTo(macroRouteLayerRef.current!);
+                }
+            });
+
+            if (boundsCoords.length > 1) {
+                const bounds = L.latLngBounds(boundsCoords);
+                map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5, animate: true });
+            } else {
+                map.flyTo([homeLat, homeLng], 18, { duration: 1.5, animate: true });
+            }
+        }
+    }, [activeRouteStops, currentRouteStopIndex, activeMowSessionId, clients, homeLat, homeLng, homeLawnBoundary, homeObstacles]);
 
     return <div ref={mapContainerRef} className="absolute inset-0 z-0 w-full h-full bg-[#0a0f0d]" />;
 }
