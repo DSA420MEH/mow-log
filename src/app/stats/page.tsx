@@ -5,7 +5,7 @@ import { useStore, type Client, type Session } from "@/lib/store";
 import { computeClientProfit } from "@/lib/selectors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-    Timer, Fuel, Wrench, Briefcase, TrendingUp, TrendingDown,
+    Timer, Fuel, Wrench, Briefcase,
     Users, Clock, AlertTriangle, Zap, DollarSign, BarChart3
 } from "lucide-react";
 import {
@@ -13,6 +13,7 @@ import {
     PieChart, Pie, Cell, AreaChart, Area
 } from "recharts";
 import { useState, useEffect, useMemo } from "react";
+import { useCountUp } from "@/hooks/use-count-up";
 
 // ── Helpers ──────────────────────────────────────
 const fmtHrs = (sec: number) => {
@@ -23,10 +24,7 @@ const fmtMoney = (n: number) => "$" + n.toFixed(2);
 const pct = (part: number, total: number) =>
     total === 0 ? "0%" : Math.round((part / total) * 100) + "%";
 
-function getMonthLabel(dateStr: string) {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { month: "short" });
-}
+
 
 // ── Per-client stats helper ──────────────────────
 function computeClientStats(client: Client, sessions: Session[]) {
@@ -62,16 +60,26 @@ function StatPill({ label, value, icon: Icon, accent = false, sub }: {
 }) {
     return (
         <div className={`rounded-xl p-4 border ${accent
-            ? "border-primary/40 bg-primary/5"
+            ? "border-primary/40 bg-primary/5 shadow-[0_0_15px_rgba(170,255,0,0.05)]"
             : "border-white/10 bg-white/[0.03]"
             }`}>
             <div className="flex items-center gap-2 mb-1.5">
                 <Icon className={`w-4 h-4 ${accent ? "text-primary" : "text-muted-foreground"}`} />
                 <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">{label}</span>
             </div>
-            <p className={`text-xl font-bold ${accent ? "text-primary" : "text-foreground"}`}>{value}</p>
+            <p className={`text-xl font-bold ${accent ? "text-primary drop-shadow-[0_0_8px_rgba(170,255,0,0.5)]" : "text-foreground"}`}>{value}</p>
             {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
         </div>
+    );
+}
+
+// ── Animated Number Component ─────────────────────
+function AnimatedNumber({ value, prefix = "", suffix = "", decimals = 0, className = "" }: { value: number; prefix?: string; suffix?: string; decimals?: number; className?: string }) {
+    const { count, ref } = useCountUp(value, 1500);
+    return (
+        <span ref={ref} className={className}>
+            {prefix}{count.toFixed(decimals)}{suffix}
+        </span>
     );
 }
 
@@ -126,16 +134,29 @@ function ClientRow({ client, stats, rank }: {
 export default function StatsPage() {
     const { clients, sessions, gasLogs, maintenanceLogs } = useStore();
     const [isMounted, setIsMounted] = useState(false);
+    const [dateFilter, setDateFilter] = useState<'30d' | 'thisYear' | 'allTime'>('allTime');
+    const [revenueSplit, setRevenueSplit] = useState<'All' | 'Regular' | 'PerCut'>('All');
 
     useEffect(() => { setIsMounted(true); }, []);
 
     // ── Aggregate Computations ──
     const stats = useMemo(() => {
+        const nowMs = Date.now();
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+        const startOfYearMs = new Date(new Date().getFullYear(), 0, 1).getTime();
+
+        const timeFilter = (timeMs: number) => {
+            if (dateFilter === 'allTime') return true;
+            if (dateFilter === '30d') return nowMs - timeMs <= thirtyDaysMs;
+            if (dateFilter === 'thisYear') return timeMs >= startOfYearMs;
+            return true;
+        };
+
         const completedMows = sessions.filter(
-            s => s.type === "address-mow" && s.status === "completed" && s.endTime
+            s => s.type === "address-mow" && s.status === "completed" && s.endTime && timeFilter(new Date(s.endTime).getTime())
         );
         const completedWorkdays = sessions.filter(
-            s => s.type === "workday" && s.status === "completed" && s.endTime
+            s => s.type === "workday" && s.status === "completed" && s.endTime && timeFilter(new Date(s.endTime).getTime())
         );
 
         const totalWorkSec = completedWorkdays.reduce((acc, s) => {
@@ -177,22 +198,49 @@ export default function StatsPage() {
             v: (new Date(s.endTime!).getTime() - new Date(s.startTime).getTime()) / 60000, // minutes
         }));
 
-        // Monthly revenue trend
-        const monthlyRev: Record<string, number> = {};
+        // 8-week revenue trend
+        const weeklyRev: Record<number, { label: string; revenue: number }> = {};
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        for (let i = 7; i >= 0; i--) {
+            const d = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
+            const label = `${d.getMonth() + 1}/${d.getDate()}`;
+            weeklyRev[7 - i] = { label, revenue: 0 };
+        }
+
         completedMows.forEach(s => {
-            const label = getMonthLabel(s.startTime);
-            const client = clients.find(c => c.id === s.clientId);
-            if (client) {
-                const rev = client.billingType === "PerCut" ? client.amount : 0;
-                monthlyRev[label] = (monthlyRev[label] || 0) + rev;
+            const mowDate = new Date(s.startTime);
+            const diffTime = now.getTime() - mowDate.getTime();
+            if (diffTime >= 0) {
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                const weekIdx = 7 - Math.floor(diffDays / 7);
+                if (weekIdx >= 0 && weekIdx <= 7) {
+                    const client = clients.find(c => c.id === s.clientId);
+                    if (client) {
+                        if (revenueSplit === 'All' || client.billingType === revenueSplit) {
+                            // Assign per-cut revenue, or roughly 1/4th of monthly regular billing for a single week's cut
+                            const rev = client.billingType === "PerCut" ? client.amount : (client.amount / 4);
+                            weeklyRev[weekIdx].revenue += rev;
+                        }
+                    }
+                }
             }
         });
-        // Add regular client income to first month or distribute
-        clients.filter(c => c.billingType === "Regular").forEach(c => {
-            const firstKey = Object.keys(monthlyRev)[0] || "Current";
-            monthlyRev[firstKey] = (monthlyRev[firstKey] || 0) + c.amount;
+        const weeklyData = Object.values(weeklyRev);
+
+        // Mow Frequency Breakdown
+        const frequencyCounts: Record<string, number> = { "Weekly": 0, "Bi-Weekly": 0, "Monthly": 0, "Other": 0 };
+        clients.forEach(c => {
+            const freq = (c.contractLength || "Weekly").toLowerCase();
+            if (freq.includes("bi")) frequencyCounts["Bi-Weekly"]++;
+            else if (freq.includes("week")) frequencyCounts["Weekly"]++;
+            else if (freq.includes("month")) frequencyCounts["Monthly"]++;
+            else frequencyCounts["Other"]++;
         });
-        const monthlyData = Object.entries(monthlyRev).map(([name, amount]) => ({ name, amount }));
+        const frequencyData = Object.entries(frequencyCounts)
+            .filter(([, value]) => value > 0)
+            .map(([name, value]) => ({ name, value }));
 
         // Per-client stats with profit
         const clientStats = clients.map(c => {
@@ -220,77 +268,60 @@ export default function StatsPage() {
             totalGas, totalMaint, totalExpenses,
             totalIncome, netIncome, profitMargin, effectiveHourlyRate,
             efficiency,
-            last10Mows, monthlyData, clientStats, gasSparkline, expenseBreakdown,
+            last10Mows, weeklyData, frequencyData, clientStats, gasSparkline, expenseBreakdown,
         };
-    }, [clients, sessions, gasLogs, maintenanceLogs]);
+    }, [clients, sessions, gasLogs, maintenanceLogs, dateFilter, revenueSplit]);
 
     if (!isMounted) return null;
 
     const COLORS_EXP = ['#ff6b35', '#ff4444'];
-    const COLORS_TIME = ['#aaff00', '#1a3a1a', '#ff6b35'];
+    const COLORS_FREQ = ['#aaff00', '#22c55e', '#14b8a6', '#6366f1'];
 
-    const timeData = [
-        { name: "Active Mowing", value: stats.totalMowSec > 0 ? stats.totalMowSec : 1 },
-        { name: "Breaks", value: stats.totalBreakSec > 0 ? stats.totalBreakSec : 1 },
-        { name: "Stuck", value: stats.totalStuckSec > 0 ? stats.totalStuckSec : 1 },
-    ];
-
-    const incomeData = [
-        { name: "Revenue", amount: stats.totalIncome },
-        { name: "Expenses", amount: stats.totalExpenses },
-        { name: "Profit", amount: Math.max(stats.netIncome, 0) },
-    ];
+    const avgRevPerMow = stats.completedMows.length > 0 ? stats.totalIncome / stats.completedMows.length : 0;
 
     return (
         <main className="p-4 pb-28 min-h-screen space-y-4">
             {/* HEADER */}
-            <div className="pt-4 mb-2">
-                <h1 className="text-2xl font-extrabold tracking-tight text-white">
-                    <span className="text-primary">Business</span> Analytics
-                </h1>
-                <p className="text-muted-foreground text-xs">Season overview · {clients.length} clients · {stats.completedMows.length} sessions</p>
+            <div className="pt-4 mb-2 flex items-end justify-between">
+                <div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-white">
+                        <span className="text-primary">Business</span> Analytics
+                    </h1>
+                    <p className="text-muted-foreground text-xs">Season overview · {clients.length} clients · {stats.completedMows.length} sessions</p>
+                </div>
+                <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                    <button onClick={() => setDateFilter('30d')} className={`px-2 py-1 flex items-center gap-1.5 rounded-md text-[10px] font-bold transition-all ${dateFilter === '30d' ? 'bg-primary text-black shadow-md' : 'text-muted-foreground hover:text-white hover:bg-white/5'}`}>30D</button>
+                    <button onClick={() => setDateFilter('thisYear')} className={`px-2 py-1 flex items-center gap-1.5 rounded-md text-[10px] font-bold transition-all ${dateFilter === 'thisYear' ? 'bg-primary text-black shadow-md' : 'text-muted-foreground hover:text-white hover:bg-white/5'}`}>YTD</button>
+                    <button onClick={() => setDateFilter('allTime')} className={`px-2 py-1 flex items-center gap-1.5 rounded-md text-[10px] font-bold transition-all ${dateFilter === 'allTime' ? 'bg-primary text-black shadow-md' : 'text-muted-foreground hover:text-white hover:bg-white/5'}`}>ALL</button>
+                </div>
             </div>
 
-            {/* ── HERO CARD ── Revenue + Profit ── */}
-            <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5">
-                <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                        <div>
-                            <p className="text-[11px] uppercase tracking-widest text-primary/70 font-medium">Total Revenue</p>
-                            <h2 className="text-3xl font-black text-white mt-0.5">{fmtMoney(stats.totalIncome)}</h2>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${stats.netIncome >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                {stats.netIncome >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                {stats.profitMargin.toFixed(0)}% margin
-                            </div>
-                            <p className="text-[11px] text-muted-foreground">{fmtMoney(stats.effectiveHourlyRate)}/hr effective</p>
-                        </div>
+            {/* ── HERO KPI BANNER ── */}
+            <div className="rounded-2xl bg-gradient-to-br from-[#1a201c] to-black border border-primary/20 shadow-[0_0_25px_rgba(195,255,0,0.1)] p-5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <DollarSign className="w-32 h-32" />
+                </div>
+
+                <p className="text-xs uppercase tracking-widest text-primary/70 font-semibold mb-1">Total Revenue</p>
+                <h2 className="text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(195,255,0,0.4)] mb-3">
+                    <AnimatedNumber value={stats.totalIncome} prefix="$" decimals={2} />
+                </h2>
+
+                <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-4">
+                    <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1 mt-0">Total Mows</p>
+                        <p className="text-xl font-bold text-gray-200">
+                            <AnimatedNumber value={stats.completedMows.length} />
+                        </p>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                        <div className="text-center p-2 rounded-lg bg-white/[0.03]">
-                            <p className="text-[10px] text-muted-foreground uppercase">Net Profit</p>
-                            <p className={`text-sm font-bold ${stats.netIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {fmtMoney(stats.netIncome)}
-                            </p>
-                        </div>
-                        <div className="text-center p-2 rounded-lg bg-white/[0.03]">
-                            <p className="text-[10px] text-muted-foreground uppercase">Gas</p>
-                            <p className="text-sm font-bold text-orange-400">{fmtMoney(stats.totalGas)}</p>
-                        </div>
-                        <div className="text-center p-2 rounded-lg bg-white/[0.03]">
-                            <p className="text-[10px] text-muted-foreground uppercase">Repairs</p>
-                            <p className="text-sm font-bold text-red-400">{fmtMoney(stats.totalMaint)}</p>
-                        </div>
+                    <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1 mt-0">Avg / Mow</p>
+                        <p className="text-xl font-bold text-emerald-400">
+                            <AnimatedNumber value={avgRevPerMow} prefix="$" decimals={2} />
+                        </p>
                     </div>
-                    {stats.gasSparkline.length >= 2 && (
-                        <div className="mt-3">
-                            <p className="text-[10px] text-muted-foreground uppercase mb-1">Gas Cost Trend</p>
-                            <Sparkline data={stats.gasSparkline} color="#ff6b35" />
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             {/* ── KPI GRID ── */}
             <div className="grid grid-cols-2 gap-2.5">
@@ -319,27 +350,33 @@ export default function StatsPage() {
 
             {/* ── CHARTS ROW ── */}
             <div className="grid grid-cols-1 gap-3">
-                {/* Financial Bar Chart */}
-                <Card className="border-white/10 bg-white/[0.02]">
-                    <CardHeader className="pb-1 pt-3 px-4">
+                {/* 8-Week Revenue Bar Chart */}
+                <Card className="border-white/10 bg-white/[0.02] overflow-hidden group">
+                    <CardHeader className="pb-1 pt-3 px-4 flex flex-row items-center justify-between">
                         <CardTitle className="text-[11px] text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                            <DollarSign className="w-3.5 h-3.5" /> Financial Overview
+                            <BarChart3 className="w-3.5 h-3.5 group-hover:text-primary transition-colors" /> 8-Week Revenue
                         </CardTitle>
+                        <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/5">
+                            <button onClick={() => setRevenueSplit('All')} className={`px-2 py-0.5 rounded text-[9px] font-bold transition-all ${revenueSplit === 'All' ? 'bg-white/20 text-white' : 'text-muted-foreground hover:text-white'}`}>All</button>
+                            <button onClick={() => setRevenueSplit('Regular')} className={`px-2 py-0.5 rounded text-[9px] font-bold transition-all ${revenueSplit === 'Regular' ? 'bg-white/20 text-white' : 'text-muted-foreground hover:text-white'}`}>Reg</button>
+                            <button onClick={() => setRevenueSplit('PerCut')} className={`px-2 py-0.5 rounded text-[9px] font-bold transition-all ${revenueSplit === 'PerCut' ? 'bg-white/20 text-white' : 'text-muted-foreground hover:text-white'}`}>PerCut</button>
+                        </div>
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
-                        <div className="h-[180px] w-full">
+                        <div className="h-[200px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={incomeData} barCategoryGap="25%">
-                                    <XAxis dataKey="name" stroke="#6b8c6b" fontSize={11} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#6b8c6b" fontSize={10} tickLine={false} axisLine={false}
-                                        tickFormatter={(v) => `$${v}`} width={45} />
+                                <BarChart data={stats.weeklyData} margin={{ top: 10, right: 0, bottom: 0, left: -20 }}>
+                                    <XAxis dataKey="label" stroke="#6b8c6b" fontSize={10} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#6b8c6b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                                     <Tooltip
-                                        cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                                        contentStyle={{ backgroundColor: '#0a0f0d', borderColor: 'rgba(170,255,0,0.2)', borderRadius: '10px', fontSize: 12 }}
+                                        cursor={{ fill: 'rgba(170,255,0,0.05)' }}
+                                        contentStyle={{ backgroundColor: 'rgba(10, 15, 13, 0.95)', borderColor: 'rgba(170,255,0,0.3)', borderRadius: '12px', fontSize: 13, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+                                        itemStyle={{ color: '#aaff00', fontWeight: 'bold' }}
+                                        formatter={(value: number | string | undefined) => [`$${Number(value || 0).toFixed(0)}`, 'Revenue']}
                                     />
-                                    <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
-                                        {incomeData.map((entry, i) => (
-                                            <Cell key={i} fill={i === 1 ? '#ff4444' : i === 2 ? '#22c55e' : '#aaff00'} />
+                                    <Bar dataKey="revenue" radius={[6, 6, 0, 0]} className="fill-primary drop-shadow-[0_0_8px_rgba(170,255,0,0.3)]">
+                                        {stats.weeklyData.map((entry, i) => (
+                                            <Cell key={i} fill={entry.revenue > 0 ? '#aaff00' : '#1a201c'} />
                                         ))}
                                     </Bar>
                                 </BarChart>
@@ -348,34 +385,42 @@ export default function StatsPage() {
                     </CardContent>
                 </Card>
 
-                {/* Time Distribution */}
+                {/* Mow Frequency Pie Chart */}
                 <Card className="border-white/10 bg-white/[0.02]">
                     <CardHeader className="pb-1 pt-3 px-4">
                         <CardTitle className="text-[11px] text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5" /> Time Distribution
+                            <Clock className="w-3.5 h-3.5" /> Mow Frequency
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-4 flex items-center gap-4">
-                        <div className="h-[120px] w-[120px] flex-shrink-0">
+                        <div className="h-[140px] w-[140px] flex-shrink-0 relative">
+                            <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                <span className="text-2xl font-black text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"><AnimatedNumber value={clients.length} /></span>
+                                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Clients</span>
+                            </div>
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie data={timeData} cx="50%" cy="50%" innerRadius={35} outerRadius={55}
-                                        paddingAngle={4} dataKey="value" stroke="none">
-                                        {timeData.map((_, i) => (
-                                            <Cell key={i} fill={COLORS_TIME[i]} />
+                                    <Pie data={stats.frequencyData} cx="50%" cy="50%" innerRadius={45} outerRadius={65}
+                                        paddingAngle={5} dataKey="value" stroke="none">
+                                        {stats.frequencyData.map((_, i) => (
+                                            <Cell key={i} fill={COLORS_FREQ[i % COLORS_FREQ.length]} className="drop-shadow-[0_0_5px_rgba(0,0,0,0.5)]" />
                                         ))}
                                     </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#0a0f0d', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#fff' }}
+                                    />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
-                        <div className="flex-1 space-y-2.5">
-                            {timeData.map((d, i) => (
+                        <div className="flex-1 space-y-3">
+                            {stats.frequencyData.map((d, i) => (
                                 <div key={d.name} className="flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS_TIME[i] }} />
+                                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS_FREQ[i % COLORS_FREQ.length], boxShadow: `0 0 8px ${COLORS_FREQ[i % COLORS_FREQ.length]}80` }} />
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[11px] text-muted-foreground">{d.name}</p>
+                                        <p className="text-xs text-gray-300 font-medium">{d.name}</p>
                                     </div>
-                                    <p className="text-xs font-bold text-foreground">{fmtHrs(d.value)}</p>
+                                    <p className="text-sm font-bold text-white"><AnimatedNumber value={d.value} /></p>
                                 </div>
                             ))}
                         </div>

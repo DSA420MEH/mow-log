@@ -35,6 +35,8 @@ export interface CutHeightRecommendation {
     label: string;
     explanation: string;
     icon: CutHeightIcon;
+    /** Recommended cut height in inches (e.g. 2.5, 3.0) */
+    recommendedHeightIn: number;
 }
 
 // ── Calculator ─────────────────────────────────────────────────────────────────
@@ -56,27 +58,32 @@ export function computeCutHeightRecommendation(data: CutHeightWeatherData): CutH
     if (totalPastRain < DROUGHT_PAST_RAIN_THRESHOLD && totalForecastRain < DROUGHT_FORECAST_RAIN_THRESHOLD) {
         return {
             level: 'high',
-            label: 'High (Drought Risk)',
+            label: 'Cut at 3.0"',
             explanation: `Only ${totalPastRain.toFixed(1)}mm rain in 5 days with ${totalForecastRain.toFixed(1)}mm forecast — keep grass tall to retain moisture`,
             icon: 'drought',
+            recommendedHeightIn: 3.0,
         };
     }
 
     // Fast growth detection: heavy past rain + (more rain OR sunny skies)
     if (totalPastRain > HEAVY_RAIN_PAST_THRESHOLD && (totalForecastRain > HEAVY_RAIN_FORECAST_THRESHOLD || avgCloudCover < SUNNY_CLOUD_COVER_THRESHOLD)) {
+        // Very wet (>40mm past 5 days) → 1.5", otherwise 2.0"
+        const heightIn = totalPastRain > 40 ? 1.5 : 2.0;
         return {
             level: 'low',
-            label: 'Short (Fast Growth)',
+            label: `Cut at ${heightIn.toFixed(1)}"`,
             explanation: `${totalPastRain.toFixed(1)}mm rain in 5 days${avgCloudCover < SUNNY_CLOUD_COVER_THRESHOLD ? ' + sunny forecast' : ' + more rain coming'} — rapid growth expected, cut shorter`,
             icon: 'growth',
+            recommendedHeightIn: heightIn,
         };
     }
 
     // Default: standard conditions
     return {
         level: 'standard',
-        label: 'Standard',
+        label: 'Cut at 2.5"',
         explanation: `Normal conditions — ${totalPastRain.toFixed(1)}mm past rain, ${totalForecastRain.toFixed(1)}mm forecast`,
         icon: 'standard',
+        recommendedHeightIn: 2.5,
     };
 }

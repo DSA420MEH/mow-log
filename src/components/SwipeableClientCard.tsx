@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon, Scissors } from "lucide-react";
+import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon, CheckCircle2 } from "lucide-react";
 import type { CutHeightRecommendation } from "@/lib/cut-height-calc";
 import Image from "next/image";
 import Link from "next/link";
@@ -54,7 +54,7 @@ interface SwipeableClientCardProps {
     profit: ProfitData;
     isActiveMowing: boolean;
     activeSession?: ActiveSessionData | null;
-    avatarStyle: { bg: string; text: string };
+    avatarStyle: { bg: string; text: string; borderTop?: string; borderLeft?: string; shadow?: string };
     cutHeight?: CutHeightRecommendation | null;
     onStartMowing: () => void;
     onCompleteMowing: () => void;
@@ -89,9 +89,9 @@ function SwipeDots({ count, active }: { count: number; active: number }) {
 }
 
 // ── Metric Card ────────────────────────────────────────────────────────────────
-function Metric({ label, value, icon: Icon, colorClass = "text-primary/60" }: { label: string; value: string | number; icon: LucideIcon; colorClass?: string }) {
+function Metric({ label, value, icon: Icon, colorClass = "text-primary/60", animStyle, borderHoverClass }: { label: string; value: string | number; icon: LucideIcon; colorClass?: string; animStyle?: React.CSSProperties; borderHoverClass?: string }) {
     return (
-        <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5 border-l-2 border-l-transparent group hover:bg-white/[0.05] hover:border-l-primary/40 transition-all duration-200 relative overflow-hidden">
+        <div className={cn("bg-white/[0.03] rounded-xl p-3 border border-white/5 border-l-2 border-l-transparent group hover:bg-white/[0.05] transition-all duration-200 relative overflow-hidden animate-fade-up", borderHoverClass || "hover:border-l-primary/40")} style={animStyle}>
             <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
                 <Icon className="w-8 h-8" />
             </div>
@@ -122,7 +122,9 @@ export function SwipeableClientCard({
     InlineMowTimer,
 }: SwipeableClientCardProps) {
     const [activePanel, setActivePanel] = useState(0);
-    const [showCutExplanation, setShowCutExplanation] = useState(false);
+    const [showCutExplanation] = useState(false);
+    const [showChecklist, setShowChecklist] = useState(false);
+    const [showRecap, setShowRecap] = useState(false);
     const touchStartX = useRef(0);
     const touchStartY = useRef(0);
     const isSwiping = useRef(false);
@@ -171,10 +173,11 @@ export function SwipeableClientCard({
     return (
         <div
             className={cn(
-                "glass-card animate-card-in rounded-2xl bg-[#1a201c] border relative overflow-hidden flex flex-col transition-colors",
+                "glass-card glass-card-hover animate-card-in rounded-2xl bg-[#1a201c] border-x border-b border-t-2 relative overflow-hidden flex flex-col transition-all duration-300",
+                avatarStyle.borderTop || "border-t-white/10",
                 isActiveMowing
-                    ? "border-primary shadow-[0_0_20px_rgba(195,255,0,0.12)]"
-                    : "border-white/5 hover:border-primary/20"
+                    ? "border-primary shadow-[0_0_20px_rgba(195,255,0,0.12)] border-t-primary"
+                    : "border-white/5 hover:border-white/20"
             )}
         >
             {/* Active mowing indicator */}
@@ -187,7 +190,7 @@ export function SwipeableClientCard({
                 <div className="relative flex items-center p-1 bg-black/20 rounded-lg backdrop-blur-md border border-white/[0.07]">
                     {/* Sliding pill */}
                     <span
-                        className="absolute top-1 bottom-1 rounded-md bg-primary/20 border border-primary/20 shadow-[inset_0_0_8px_rgba(195,255,0,0.08)] transition-all duration-300 ease-out pointer-events-none"
+                        className="absolute top-0.5 bottom-0.5 rounded-md bg-primary/20 border border-primary/20 shadow-[0_0_12px_rgba(170,255,0,0.15),inset_0_0_8px_rgba(195,255,0,0.08)] transition-all duration-300 ease-out pointer-events-none"
                         style={{
                             left: `calc(${activePanel} * (100% - 0.5rem) / ${PANEL_LABELS.length} + 0.25rem)`,
                             width: `calc((100% - 0.5rem) / ${PANEL_LABELS.length})`,
@@ -221,9 +224,9 @@ export function SwipeableClientCard({
                 <div className="flex items-start justify-between">
                     <div className="flex gap-3 items-start">
                         <div className={cn(
-                            "w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base transition-all duration-300",
-                            avatarStyle.bg, avatarStyle.text,
-                            isActiveMowing && "ring-2 ring-primary/60 ring-offset-1 ring-offset-[#1a201c]"
+                            "w-12 h-12 rounded-full flex items-center justify-center font-black text-lg transition-all duration-300 hover:scale-105",
+                            avatarStyle.bg, avatarStyle.text, avatarStyle.shadow,
+                            isActiveMowing && "ring-2 ring-primary/60 ring-offset-2 ring-offset-[#1a201c] shadow-[0_0_15px_rgba(195,255,0,0.4)]"
                         )}>
                             {getInitials(client.name)}
                         </div>
@@ -262,24 +265,6 @@ export function SwipeableClientCard({
                             RATE MISSING
                         </div>
                     )}
-
-                    {/* Cut Height Recommendation Badge */}
-                    {cutHeight && (
-                        <button
-                            onClick={() => setShowCutExplanation(prev => !prev)}
-                            className={cn(
-                                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black tracking-tight transition-all",
-                                cutHeight.level === 'high'
-                                    ? "bg-amber-500/15 text-amber-400 border border-amber-500/20"
-                                    : cutHeight.level === 'low'
-                                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
-                                        : "bg-white/5 text-white/50 border border-white/10"
-                            )}
-                        >
-                            <Scissors className="w-3 h-3" />
-                            {cutHeight.label}
-                        </button>
-                    )}
                 </div>
 
                 {/* Cut Height Explanation (expandable) */}
@@ -292,7 +277,7 @@ export function SwipeableClientCard({
                                 ? "bg-emerald-500/5 border-emerald-500/10 text-emerald-300/80"
                                 : "bg-white/[0.02] border-white/5 text-white/40"
                     )}>
-                        {cutHeight.explanation}
+                        <span className="font-bold">{cutHeight.label}</span> — {cutHeight.explanation}
                     </div>
                 )}
 
@@ -334,29 +319,31 @@ export function SwipeableClientCard({
                         </div>
 
                         <div className="grid grid-cols-2 gap-2.5">
-                            <Metric label="Visits" value={stats.totalVisits} icon={Hash} />
-                            <Metric label="Lifetime" value={`$${profit.revenue.toFixed(0)}`} icon={DollarSign} colorClass="text-emerald-400/60" />
-                            <Metric label="Total Work" value={stats.totalTimeStr} icon={Clock} />
-                            <Metric label="Efficiency" value={stats.avgTime} icon={Zap} colorClass="text-blue-400/60" />
+                            <Metric label="Visits" value={stats.totalVisits} icon={Hash} borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '0ms' }} />
+                            <Metric label="Lifetime" value={`$${profit.revenue.toFixed(0)}`} icon={DollarSign} colorClass="text-emerald-400/60" borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '60ms' }} />
+                            <Metric label="Total Work" value={stats.totalTimeStr} icon={Clock} borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '120ms' }} />
+                            <Metric label="Efficiency" value={stats.avgTime} icon={Zap} colorClass="text-blue-400/60" borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '180ms' }} />
                             <Metric
                                 label="Recency"
                                 value={stats.daysSince}
                                 icon={Calendar}
                                 colorClass={stats.daysSinceNum > 10 ? "text-rose-400/60" : stats.daysSinceNum > 5 ? "text-amber-400/60" : "text-emerald-400/60"}
+                                borderHoverClass={avatarStyle.borderLeft}
+                                animStyle={{ animationDelay: '240ms' }}
                             />
-                            <Metric label="Stuck" value={stats.totalStuckStr} icon={Zap} colorClass="text-rose-400/60" />
-                            <Metric label="Paused" value={stats.totalBreakStr} icon={PauseCircle} colorClass="text-gray-400/60" />
+                            <Metric label="Stuck" value={stats.totalStuckStr} icon={Zap} colorClass="text-rose-400/60" borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '300ms' }} />
+                            <Metric label="Paused" value={stats.totalBreakStr} icon={PauseCircle} colorClass="text-gray-400/60" borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '360ms' }} />
                         </div>
 
                         {/* Revenue / Profit Summary */}
                         {showProfit && (
                             <div className="mt-3 flex gap-2">
-                                <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 text-center">
+                                <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 text-center transition-all duration-200 hover:scale-[1.02]">
                                     <span className="text-[10px] text-emerald-400/70 font-bold uppercase tracking-wider block mb-0.5">Revenue</span>
                                     <span className="text-base font-bold text-emerald-400">${profit.revenue.toFixed(0)}</span>
                                 </div>
                                 <div className={cn(
-                                    "flex-1 border rounded-xl p-2.5 text-center",
+                                    "flex-1 border rounded-xl p-2.5 text-center transition-all duration-200 hover:scale-[1.02]",
                                     isPositive ? "bg-emerald-500/10 border-emerald-500/20" : "bg-red-500/10 border-red-500/20"
                                 )}>
                                     <span className={cn("text-[10px] font-bold uppercase tracking-wider block mb-0.5", isPositive ? "text-emerald-400/70" : "text-red-400/70")}>Profit</span>
@@ -366,7 +353,29 @@ export function SwipeableClientCard({
                         )}
 
                         {/* Footer */}
-                        <div className="mt-4 pt-2 flex items-center justify-between border-t border-white/5">
+                        {showChecklist && !isActiveMowing && (
+                            <div className="mt-4 p-3 rounded-xl bg-primary/10 border border-primary/20 animate-in fade-in slide-in-from-bottom-2">
+                                <p className="font-bold text-primary mb-2 flex items-center gap-1.5 text-sm"><CheckCircle2 className="w-4 h-4" /> Pre-Start Checks</p>
+                                <ul className="space-y-1.5 text-[11px] font-medium text-white/80 list-disc list-inside ml-1">
+                                    <li>Fuel level is sufficient for route</li>
+                                    <li>Blades are clean and sharp</li>
+                                    <li>Property hazards (toys, hoses, rocks) cleared</li>
+                                </ul>
+                            </div>
+                        )}
+                        {showRecap && isActiveMowing && (
+                            <div className="mt-4 p-3 rounded-xl bg-white/10 border border-white/20 animate-in fade-in slide-in-from-bottom-2">
+                                <p className="font-bold text-white mb-2 flex items-center gap-1.5 text-sm"><CheckCircle2 className="w-4 h-4" /> Session Recap</p>
+                                <p className="text-[11px] text-white/70 mb-2 leading-tight">You are about to complete the mowing session for {client.name}.</p>
+                                <ul className="space-y-1.5 text-[11px] font-medium text-white/80 list-disc list-inside ml-1">
+                                    <li>All trimmed areas blown clean</li>
+                                    <li>Gates closed and secured</li>
+                                    <li>Mower deck scraped (if wet)</li>
+                                </ul>
+                            </div>
+                        )}
+
+                        <div className="mt-3 pt-3 flex flex-wrap items-center justify-between border-t border-white/5 gap-y-3">
                             {stats.daysSinceNum >= 0 ? (
                                 <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap", daysSinceColor)}>
                                     {stats.daysSince}
@@ -378,20 +387,38 @@ export function SwipeableClientCard({
                             )}
 
                             {isActiveMowing ? (
-                                <Button
-                                    onClick={onCompleteMowing}
-                                    className="bg-white hover:bg-white/90 text-black font-bold shadow-[0_4px_15px_rgba(255,255,255,0.2)] transition-all active:scale-[0.97]"
-                                >
-                                    Complete Mowing
-                                </Button>
+                                showRecap ? (
+                                    <div className="flex items-center gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-right-4">
+                                        <Button onClick={() => setShowRecap(false)} variant="ghost" className="flex-1 sm:flex-none text-xs hover:bg-white/5 h-9 px-3">
+                                            Cancel
+                                        </Button>
+                                        <Button onClick={() => { setShowRecap(false); onCompleteMowing(); }} className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-400 text-black font-bold h-9 shadow-[0_4px_15px_rgba(16,185,129,0.3)]">
+                                            <CheckCircle2 className="w-4 h-4 mr-1.5" /> Confirm
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <Button onClick={() => setShowRecap(true)} className="bg-white hover:bg-white/90 text-black font-bold shadow-[0_4px_15px_rgba(255,255,255,0.2)] transition-all active:scale-[0.97]">
+                                        Complete Mowing
+                                    </Button>
+                                )
                             ) : (
-                                <Button
-                                    onClick={onStartMowing}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[0_4px_15px_rgba(170,255,0,0.2)] transition-all active:scale-[0.97]"
-                                >
-                                    <Timer className="w-4 h-4 mr-2" />
-                                    Start Mowing
-                                </Button>
+                                showChecklist ? (
+                                    <div className="flex items-center gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-right-4">
+                                        <Button onClick={() => setShowChecklist(false)} variant="ghost" className="flex-1 sm:flex-none text-xs hover:bg-white/5 h-9 px-3">
+                                            Cancel
+                                        </Button>
+                                        <Button onClick={() => { setShowChecklist(false); onStartMowing(); }} className="flex-1 sm:flex-none bg-primary hover:bg-primary/90 text-black font-bold h-9 shadow-[0_4px_15px_rgba(170,255,0,0.3)]">
+                                            <Timer className="w-4 h-4 mr-1.5" /> Start Timer
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <div className="pointer-events-none absolute inset-0 rounded-full border border-primary/40 animate-ring-pulse" />
+                                        <Button onClick={() => setShowChecklist(true)} className="relative bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[0_4px_15px_rgba(170,255,0,0.2)] hover:shadow-[0_6px_20px_rgba(170,255,0,0.35)] transition-all active:scale-[0.97] rounded-full">
+                                            <Timer className="w-4 h-4 mr-2" /> Start Mowing
+                                        </Button>
+                                    </div>
+                                )
                             )}
                         </div>
                     </div>

@@ -115,8 +115,9 @@ src/
 ## Agent Rules
 
 1. **Don't touch the design** unless the user explicitly asks for design changes
-2. **Always `npm run build`** before pushing to catch errors early
-3. **Push to `main`** to deploy — Vercel auto-deploys, no CLI needed
-4. **The live URL has a hyphen:** `mow-log.vercel.app`, NOT `mowlog.vercel.app`
-5. **localStorage persistence** means seed data changes won't affect existing users unless they clear storage
-6. **Keep commits focused** — don't stage unrelated modified files alongside feature changes
+2. **Always test locally first** — run `npm run dev` and use the browser subagent on `http://localhost:3000` to verify changes look correct on both mobile and desktop viewports **before** pushing to GitHub. Never push untested code to `main`.
+3. **Always `npm run build`** after local testing to catch strict Next.js/Turbopack errors before pushing
+4. **Push to `main`** to deploy — Vercel auto-deploys, no CLI needed
+5. **The live URL has a hyphen:** `mow-log.vercel.app`, NOT `mowlog.vercel.app`
+6. **localStorage persistence** means seed data changes won't affect existing users unless they clear storage
+7. **Keep commits focused** — don't stage unrelated modified files alongside feature changes

@@ -6,7 +6,7 @@ import { computeClientProfit, computeEquipmentAlerts } from "@/lib/selectors";
 import { ClientForm } from "@/components/ClientForm";
 import { Button } from "@/components/ui/button";
 import { SwipeableClientCard } from "@/components/SwipeableClientCard";
-import { MapPin, ListTodo, Plus, AlertTriangle } from "lucide-react";
+import { MapPin, Plus, AlertTriangle, Scissors } from "lucide-react";
 import { useState, useEffect } from "react";
 import { SettingsModal } from "@/components/SettingsModal";
 import { cn } from "@/lib/utils";
@@ -21,11 +21,11 @@ const generateAvatarStyle = (name: string) => {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
     const colors = [
-        { bg: "bg-emerald-900/40", text: "text-emerald-400" },
-        { bg: "bg-purple-900/40", text: "text-purple-400" },
-        { bg: "bg-orange-900/40", text: "text-orange-400" },
-        { bg: "bg-blue-900/40", text: "text-blue-400" },
-        { bg: "bg-pink-900/40", text: "text-pink-400" },
+        { bg: "bg-emerald-900/40", text: "text-emerald-400", borderTop: "border-t-emerald-500/50", borderLeft: "hover:border-l-emerald-500/50", shadow: "hover:shadow-[0_0_15px_rgba(16,185,129,0.4)]" },
+        { bg: "bg-purple-900/40", text: "text-purple-400", borderTop: "border-t-purple-500/50", borderLeft: "hover:border-l-purple-500/50", shadow: "hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]" },
+        { bg: "bg-orange-900/40", text: "text-orange-400", borderTop: "border-t-orange-500/50", borderLeft: "hover:border-l-orange-500/50", shadow: "hover:shadow-[0_0_15px_rgba(249,115,22,0.4)]" },
+        { bg: "bg-blue-900/40", text: "text-blue-400", borderTop: "border-t-blue-500/50", borderLeft: "hover:border-l-blue-500/50", shadow: "hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]" },
+        { bg: "bg-pink-900/40", text: "text-pink-400", borderTop: "border-t-pink-500/50", borderLeft: "hover:border-l-pink-500/50", shadow: "hover:shadow-[0_0_15px_rgba(236,72,153,0.4)]" },
     ];
     return colors[Math.abs(hash) % colors.length];
 };
@@ -125,7 +125,7 @@ export default function AddressesPage() {
     if (!isMounted) return null;
 
     const handleStartMowing = (clientId: string) => {
-        startMowSession(clientId);
+        startMowSession(clientId, cutHeightRec?.recommendedHeightIn);
     };
 
     const handleCompleteMowing = () => {
@@ -179,28 +179,90 @@ export default function AddressesPage() {
 
     const displayClients = activeTab === 'All' ? clients : activeTab === 'Regular' ? regularClients : perCutClients;
 
+    // Dashboard calculations
+    const now = new Date();
+    // Sort clients: active first, then by days since last cut (descending), then by proximity to home
+    const sortedDisplayClients = [...displayClients].sort((a, b) => {
+        if (activeSession?.clientId === a.id) return -1;
+        if (activeSession?.clientId === b.id) return 1;
+
+        const getDaysSinceNum = (clientId: string) => {
+            const clientSessions = sessions.filter((s) => s.clientId === clientId && s.status === 'completed');
+            if (clientSessions.length === 0) return 9999;
+            const lastVisit = new Date(clientSessions[clientSessions.length - 1].startTime);
+            return Math.ceil(Math.abs(now.getTime() - lastVisit.getTime()) / (1000 * 60 * 60 * 24));
+        };
+
+        const recencyA = getDaysSinceNum(a.id);
+        const recencyB = getDaysSinceNum(b.id);
+        if (recencyA !== recencyB) return recencyB - recencyA;
+
+        // Proximity tiebreaker
+        if (homeLat && homeLng && a.lat && a.lng && b.lat && b.lng) {
+            const distA = Math.pow(a.lat - homeLat, 2) + Math.pow(a.lng - homeLng, 2);
+            const distB = Math.pow(b.lat - homeLat, 2) + Math.pow(b.lng - homeLng, 2);
+            return distA - distB; // Closest first
+        }
+
+        return 0;
+    });
+
+    const currentHour = now.getHours();
+    const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
+
+    const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+    const dateString = now.toLocaleDateString('en-US', dateOptions);
+
+    const sevenDaysAgoMs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    const completedSessionsThisWeek = sessions.filter(
+        s => s.status === 'completed' && s.clientId && new Date(s.endTime || s.startTime).getTime() > sevenDaysAgoMs
+    );
+    const mowsThisWeek = completedSessionsThisWeek.length;
+
+    const revenueThisWeek = completedSessionsThisWeek.reduce((sum, s) => {
+        const client = clients.find(c => c.id === s.clientId);
+        if (client && client.billingType === 'PerCut') {
+            return sum + (client.amount || 0);
+        }
+        return sum;
+    }, 0);
+    const avgRevenuePerMowThisWeek = mowsThisWeek > 0 ? revenueThisWeek / mowsThisWeek : 0;
+
     return (
-        <main className="p-4 md:p-8 pb-28 min-h-screen bg-[#0a0f0d]">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pt-4">
-                <div className="flex items-start gap-4">
-                    <ListTodo className="w-8 h-8 text-primary mt-1" />
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-white mb-1">
-                            Saved Addresses
-                        </h1>
-                        <p className="text-muted-foreground text-sm">Swipe cards to view stats & routes</p>
-                    </div>
+        <main className="p-4 md:p-8 pb-28 min-h-screen bg-[#0a0f0d] ambient-glow">
+            <div className="flex flex-row items-start justify-between gap-4 mb-6 pt-2">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-white mb-1">
+                        {greeting}, Fred
+                    </h1>
+                    <p className="text-muted-foreground text-sm">{dateString}</p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="mt-1 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.22)] backdrop-blur-xl">
                     <SettingsModal />
                     <ClientForm
                         customTrigger={
-                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-[0_0_15px_rgba(170,255,0,0.15)] transition-all">
-                                <Plus className="w-5 h-5 mr-2" /> Add New Address
+                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-[0_0_15px_rgba(170,255,0,0.15)] transition-all px-3">
+                                <Plus className="w-5 h-5 mr-1" /> Add
                             </Button>
                         }
                     />
+                </div>
+            </div>
+
+            {/* Today at a glance row */}
+            <div className="grid grid-cols-3 gap-3 mb-8">
+                <div className="bg-[#151a17] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-primary">${revenueThisWeek}</span>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider mt-1 text-center">Revenue (7d)</span>
+                </div>
+                <div className="bg-[#151a17] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-white">{mowsThisWeek}</span>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider mt-1 text-center">Mows (7d)</span>
+                </div>
+                <div className="bg-[#151a17] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-white">${avgRevenuePerMowThisWeek.toFixed(0)}</span>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider mt-1 text-center">Avg / Mow</span>
                 </div>
             </div>
 
@@ -217,13 +279,56 @@ export default function AddressesPage() {
                 </div>
             )}
 
+            {cutHeightRec && (
+                <div className={cn(
+                    "mb-6 p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden",
+                    cutHeightRec.icon === "drought" ? "bg-amber-950/30 border border-amber-500/20" :
+                        cutHeightRec.icon === "growth" ? "bg-emerald-950/30 border border-emerald-500/20" :
+                            "bg-[#151a17] border border-white/5"
+                )}>
+                    {/* Background icon */}
+                    <Scissors className={cn(
+                        "absolute -right-4 -bottom-4 w-32 h-32 opacity-[0.03]",
+                        cutHeightRec.icon === "drought" ? "text-amber-500" :
+                            cutHeightRec.icon === "growth" ? "text-emerald-500" :
+                                "text-white"
+                    )} />
+
+                    <div className={cn(
+                        "flex items-center justify-center shrink-0 w-16 h-16 rounded-xl",
+                        cutHeightRec.icon === "drought" ? "bg-amber-500/10 text-amber-500" :
+                            cutHeightRec.icon === "growth" ? "bg-emerald-500/10 text-emerald-500" :
+                                "bg-white/5 text-white"
+                    )}>
+                        <Scissors className="w-8 h-8" />
+                    </div>
+
+                    <div className="flex-1 relative z-10">
+                        <div className="flex items-baseline gap-2 mb-1">
+                            <span className="text-2xl font-black text-white">{cutHeightRec.recommendedHeightIn.toFixed(1)}&quot;</span>
+                            <span className={cn(
+                                "text-sm font-bold uppercase tracking-wider",
+                                cutHeightRec.icon === "drought" ? "text-amber-500" :
+                                    cutHeightRec.icon === "growth" ? "text-emerald-500" :
+                                        "text-muted-foreground"
+                            )}>
+                                {cutHeightRec.icon === "drought" ? "Drought Risk" : cutHeightRec.icon === "growth" ? "Fast Growth" : "Standard"}
+                            </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground/80 leading-snug">
+                            {cutHeightRec.explanation}
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="flex items-center gap-2 mb-8 bg-[#151a17] w-fit p-1 rounded-xl glass-card border border-white/5">
                 <button
                     onClick={() => setActiveTab('Regular')}
                     className={cn(
                         "px-6 py-2 rounded-lg text-sm font-bold transition-all",
                         activeTab === 'Regular'
-                            ? "bg-primary text-black shadow-sm"
+                            ? "bg-primary text-black shadow-sm shadow-[0_0_10px_rgba(195,255,0,0.2)]"
                             : "text-muted-foreground hover:text-white"
                     )}
                 >
@@ -234,7 +339,7 @@ export default function AddressesPage() {
                     className={cn(
                         "px-6 py-2 rounded-lg text-sm font-bold transition-all",
                         activeTab === 'PerCut'
-                            ? "bg-primary text-black shadow-sm"
+                            ? "bg-primary text-black shadow-sm shadow-[0_0_10px_rgba(195,255,0,0.2)]"
                             : "text-muted-foreground hover:text-white"
                     )}
                 >
@@ -244,15 +349,15 @@ export default function AddressesPage() {
 
             <EquipmentAlertBanner />
 
-            {displayClients.length === 0 ? (
+            {sortedDisplayClients.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-primary/20 rounded-2xl bg-[#151a17]/50 glass-card">
                     <MapPin className="w-12 h-12 text-primary/40 mb-4" />
                     <h3 className="text-xl font-bold text-white mb-2">No clients found</h3>
                     <p className="text-sm text-muted-foreground mb-4">You have no clients in this category.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {displayClients.map((client) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+                    {sortedDisplayClients.map((client) => {
                         const stats = getClientStats(client.id);
                         const avatarStyle = generateAvatarStyle(client.name);
                         const isActiveMowing = activeSession?.clientId === client.id;

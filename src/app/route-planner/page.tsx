@@ -38,7 +38,8 @@ function RoutePlannerContent() {
     const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
     const [homeInput, setHomeInput] = useState(homeAddress || "");
     const [settingHome, setSettingHome] = useState(false);
-    const [showDailyRoute, setShowDailyRoute] = useState(false);
+    // Auto-expand driving route panel unless we're initializing a specific client's lawn map
+    const [showDailyRoute, setShowDailyRoute] = useState(!initClientId);
 
     const toggleClient = (id: string) => {
         setSelectedClientIds(prev => {
@@ -65,6 +66,16 @@ function RoutePlannerContent() {
         }
         setSettingHome(false);
     }, [homeInput, setHomeAddress]);
+
+    const selectAll = () => {
+        setSelectedClientIds(new Set(clientsWithCoords.map(c => c.id)));
+        setOptimizedRoute(null);
+    };
+
+    const clearAll = () => {
+        setSelectedClientIds(new Set());
+        setOptimizedRoute(null);
+    };
 
     const generateDailyRoute = () => {
         if (!homeLat || !homeLng || selectedClientIds.size === 0) return;
@@ -170,9 +181,25 @@ function RoutePlannerContent() {
                             </div>
                         ) : (
                             <div>
-                                <label className="text-[11px] uppercase text-muted-foreground tracking-widest font-medium mb-1.5 block">
-                                    Select clients to visit today
-                                </label>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="text-[11px] uppercase text-muted-foreground tracking-widest font-medium">
+                                        Select clients to visit today
+                                    </label>
+                                    <div className="flex gap-1.5">
+                                        <button
+                                            onClick={selectAll}
+                                            className="text-[10px] px-2 py-0.5 rounded bg-primary/15 text-primary font-bold hover:bg-primary/25 transition-colors"
+                                        >
+                                            All
+                                        </button>
+                                        <button
+                                            onClick={clearAll}
+                                            className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-muted-foreground font-bold hover:bg-white/10 transition-colors"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
                                 <div className="space-y-1 max-h-48 overflow-y-auto">
                                     {clientsWithCoords.map(client => (
                                         <button
@@ -216,9 +243,11 @@ function RoutePlannerContent() {
                                     <span className="text-[11px] uppercase text-primary/70 tracking-widest font-medium">
                                         Optimized Order
                                     </span>
-                                    <span className="text-xs text-muted-foreground">
-                                        ~{optimizedRoute.totalDistanceKm.toFixed(1)} km total drive
-                                    </span>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <span>~{optimizedRoute.totalDistanceKm.toFixed(1)} km</span>
+                                        <span className="text-white/20">·</span>
+                                        <span>~{Math.round(optimizedRoute.totalDistanceKm / 30 * 60)} min drive</span>
+                                    </div>
                                 </div>
 
                                 {/* Fuel Cost Estimate */}
@@ -281,19 +310,30 @@ function RoutePlannerContent() {
                 )}
             </div>
 
-            {/* Instructions */}
-            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                    <strong className="text-foreground">Step 1:</strong>{" "}
-                    Search address → draw the <span className="text-primary font-semibold">lawn boundary</span> (green).{" "}
-                    <strong className="text-foreground">Step 2:</strong>{" "}
-                    Switch to <span className="text-red-400 font-semibold">Mark Obstacle</span> → draw the house, driveway, beds (red).{" "}
-                    <strong className="text-foreground">Step 3:</strong>{" "}
-                    Set mower specs → Generate Route.
-                </p>
+            {/* ── Lawn Boundary Planner Section ── */}
+            <div className="mt-2">
+                <div className="flex items-center gap-2 mb-3">
+                    <div className="h-px flex-1 bg-white/5" />
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10">
+                        <MapPin className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-[11px] font-bold text-white/60 uppercase tracking-widest">Lawn Boundary Planner</span>
+                    </div>
+                    <div className="h-px flex-1 bg-white/5" />
+                </div>
+
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 mb-3">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                        <strong className="text-foreground">Step 1:</strong>{" "}
+                        Search address → draw the <span className="text-primary font-semibold">lawn boundary</span> (green).{" "}
+                        <strong className="text-foreground">Step 2:</strong>{" "}
+                        Switch to <span className="text-red-400 font-semibold">Mark Obstacle</span> → draw the house, driveway, beds (red).{" "}
+                        <strong className="text-foreground">Step 3:</strong>{" "}
+                        Set mower specs → Generate Route.
+                    </p>
+                </div>
+
+                <LawnMap initialAddress={initClient?.address} />
             </div>
-            {/* Map Component */}
-            <LawnMap initialAddress={initClient?.address} />
         </main>
     );
 }

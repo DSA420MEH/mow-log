@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { ActiveMowBanner } from "@/components/ActiveMowBanner";
 import { PWAProvider } from "next-pwa-pack";
 import { WebMCPProvider } from "@/components/WebMCPProvider";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
         <WebMCPProvider>
           {isDev ? (
             <div className="relative flex min-h-screen flex-col">
+              <OfflineBanner />
               <div className="flex-1">{children}</div>
               <ActiveMowBanner />
               <BottomNav />
@@ -53,6 +55,7 @@ export default function RootLayout({
           ) : (
             <PWAProvider>
               <div className="relative flex min-h-screen flex-col">
+                <OfflineBanner />
                 <div className="flex-1">{children}</div>
                 <ActiveMowBanner />
                 <BottomNav />

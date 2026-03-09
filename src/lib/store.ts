@@ -31,6 +31,8 @@ export interface Session {
     stuckTimeTotal?: number; // in seconds
     currentBreakOrStuckStartTime?: string | null;
     status: 'active' | 'break' | 'stuck' | 'completed';
+    /** Recommended cut height (inches) at time of mow start, e.g. 2.5 */
+    cutHeightIn?: number;
 }
 
 export interface GasLog {
@@ -105,7 +107,7 @@ interface AppState {
     endWorkdaySession: () => void;
     toggleWorkdayBreak: () => void;
 
-    startMowSession: (clientId: string) => void;
+    startMowSession: (clientId: string, cutHeightIn?: number) => void;
     endMowSession: () => void;
     toggleMowBreak: () => void;
     toggleMowStuck: () => void;
@@ -229,7 +231,7 @@ export const useStore = create<AppState>()(
                     };
                 }),
 
-            startMowSession: (clientId) =>
+            startMowSession: (clientId, cutHeightIn) =>
                 set((state) => {
                     if (state.activeMowSessionId) return state; // Already active -> Single mow session at a time
 
@@ -243,6 +245,7 @@ export const useStore = create<AppState>()(
                         stuckTimeTotal: 0,
                         currentBreakOrStuckStartTime: null,
                         status: 'active',
+                        cutHeightIn,
                     };
 
                     const updates: Partial<AppState> = {
