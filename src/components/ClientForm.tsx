@@ -45,6 +45,8 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
 
     const [billingType, setBillingType] = useState<BillingType>("PerCut");
     const [amount, setAmount] = useState("");
+    const [lat, setLat] = useState<number | undefined>(undefined);
+    const [lng, setLng] = useState<number | undefined>(undefined);
 
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
@@ -76,16 +78,30 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
 
     const selectSuggestion = (sug: any) => {
         const adr = sug.address || {};
-        const houseNumber = adr.house_number || "";
-        const road = adr.road || "";
+        const houseNumber = adr.house_number || adr.building || "";
+        const road = adr.road || adr.pedestrian || adr.street || "";
         const street = `${houseNumber} ${road}`.trim();
-        const cityVal = adr.city || adr.town || adr.village || adr.municipality || "";
+
+        // City hierarchy: try city, town, village, municipality, or pull from parts of display_name if fallback is needed
+        let cityVal = adr.city || adr.town || adr.village || adr.municipality || "";
+        if (!cityVal && sug.display_name.includes("Moncton")) {
+            // Very specific edgecase, we clean up weird boundaries
+            cityVal = "Moncton";
+        }
+        cityVal = cityVal.replace(/City of /gi, ""); // Clean up "City of XYZ" prefixes
+
         const zipVal = adr.postcode || "";
 
-        // Only overwrite if we got some parsed data, else fallback to raw 
-        setAddress(street || sug.display_name.split(",")[0]);
-        if (cityVal) setCity(cityVal);
-        if (zipVal) setZip(zipVal);
+        // If we can't extract a decent street name from the granular data,
+        // take the first piece of the display name (e.g. "80 Southpine Avenue, ...")
+        const finalStreet = street ? street : sug.display_name.split(",")[0];
+
+        // Ensure we properly set everything so the UI feels responsive & correct.
+        setAddress(finalStreet);
+        setCity(cityVal);
+        setZip(zipVal);
+        setLat(parseFloat(sug.lat));
+        setLng(parseFloat(sug.lon));
 
         setSuggestions([]);
     };
@@ -119,6 +135,8 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
             setBillingType(initialData.billingType);
             setAmount(initialData.amount.toString());
             setNotes(initialData.notes || "");
+            setLat(initialData.lat);
+            setLng(initialData.lng);
             setStep(1);
             setSuccess(false);
         } else if (!initialData && open) {
@@ -134,13 +152,15 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
             setBillingType("PerCut");
             setAmount("");
             setNotes("");
+            setLat(undefined);
+            setLng(undefined);
             setStep(1);
             setSuccess(false);
         }
     }, [initialData, open]);
 
     const handleSave = () => {
-        const clientData = {
+        const clientData: Partial<Client> = {
             name,
             address: `${address}, ${city} ${zip}`.trim(),
             phone,
@@ -152,11 +172,16 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
             notes,
         };
 
+        if (lat !== undefined && lng !== undefined) {
+            clientData.lat = lat;
+            clientData.lng = lng;
+        }
+
         if (initialData) {
             updateClient(initialData.id, clientData);
             setSuccess(true);
         } else {
-            addClient(clientData);
+            addClient(clientData as Omit<Client, 'id' | 'createdAt'>);
             setSuccess(true);
         }
     };
