@@ -92,7 +92,7 @@ function InlineMowTimer({ startTime, breakTimeTotal = 0, stuckTimeTotal = 0, sta
 }
 
 export default function AddressesPage() {
-    const { clients, sessions, startMowSession, endMowSession, activeMowSessionId, homeAddress, homeLat, homeLng } = useStore();
+    const { clients, sessions, startMowSession, endMowSession, activeMowSessionId, homeAddress, homeLat, homeLng, hydrated } = useStore();
     const { recommendation: cutHeightRec } = useCutHeight(homeLat || 0, homeLng || 0);
     const { mowSafety, bestDays } = useLawnIntelligence(homeLat || 0, homeLng || 0);
 
@@ -105,7 +105,9 @@ export default function AddressesPage() {
     useEffect(() => {
         setIsMounted(true);
         // Automatically load seed data if the store is empty (first visit or after clear)
-        if (clients.length === 0) {
+        // CRITICAL: We MUST wait for hydration to complete before deciding to seed.
+        // Otherwise, the empty initial state will trigger seeding before localStorage is merged.
+        if (hydrated && clients.length === 0) {
             const seed = getSeedData();
             useStore.setState({
                 clients: seed.clients,
@@ -120,7 +122,7 @@ export default function AddressesPage() {
                 fuelCostPerKm: seed.fuelCostPerKm,
             });
         }
-    }, [clients.length]);
+    }, [hydrated, clients.length]);
 
     const regularClients = clients.filter((c) => c.billingType === "Regular");
     const perCutClients = clients.filter((c) => c.billingType === "PerCut");

@@ -121,3 +121,18 @@ src/
 5. **The live URL has a hyphen:** `mow-log.vercel.app`, NOT `mowlog.vercel.app`
 6. **localStorage persistence** means seed data changes won't affect existing users unless they clear storage
 7. **Keep commits focused** — don't stage unrelated modified files alongside feature changes
+
+---
+
+## Slash Commands & Workflows
+
+### `/mowlog`
+Use this slash command when starting a new chat about the MowLog app. It automatically loads:
+- Full project overview and tech stack
+- File structure and key component locations
+- Design system (colors, fonts, glass-card style)
+- Deployment info (URL, branch, auto-deploy)
+- Quick actions for common tasks
+- Quality gates reminder
+
+**Trigger:** Type `/mowlog` in a new chat to switch context to this project.

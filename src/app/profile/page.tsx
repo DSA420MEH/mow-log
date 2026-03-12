@@ -42,7 +42,13 @@ export default function ProfilePage() {
             setIsSearchingSuggestions(true);
             debounceTimerRef.current = setTimeout(async () => {
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+                    let query = val;
+                    if (!val.includes(',') && homeAddress && homeAddress.includes(',')) {
+                        const cityRegion = homeAddress.substring(homeAddress.indexOf(','));
+                        query = val + cityRegion;
+                    }
+
+                    const res = await fetch(`/api/places/autocomplete?q=${encodeURIComponent(query)}`);
                     const data = await res.json();
                     setSuggestions(data);
                 } catch {
@@ -58,7 +64,7 @@ export default function ProfilePage() {
 
     const selectSuggestion = (sug: any) => {
         const lat = parseFloat(sug.lat);
-        const lng = parseFloat(sug.lon);
+        const lng = parseFloat(sug.lng);
         setAddressInput(sug.display_name);
         setSuggestions([]);
         setSavedCoords({ lat, lng });
@@ -71,11 +77,11 @@ export default function ProfilePage() {
         if (!addressInput.trim()) return;
         setIsGeocoding(true);
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressInput)}&format=json&limit=1`);
+            const res = await fetch(`/api/places/autocomplete?q=${encodeURIComponent(addressInput)}`);
             const data = await res.json();
             if (data.length > 0) {
                 const lat = parseFloat(data[0].lat);
-                const lng = parseFloat(data[0].lon);
+                const lng = parseFloat(data[0].lng);
                 setSavedCoords({ lat, lng });
                 updateProfile(nameInput, addressInput, lat, lng);
                 setSavedStatus("Address located and saved.");

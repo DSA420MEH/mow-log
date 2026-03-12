@@ -82,6 +82,12 @@ export function SettingsModal() {
             equipment: [],
             activeWorkdaySessionId: null,
             activeMowSessionId: null,
+            userName: '',
+            homeAddress: '',
+            homeLat: undefined,
+            homeLng: undefined,
+            homeLawnBoundary: undefined,
+            homeObstacles: undefined,
         });
         alert("All data cleared.");
     };
@@ -93,26 +99,27 @@ export function SettingsModal() {
                     <Settings className="w-5 h-5" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md bg-card/90 backdrop-blur-xl border-primary/30 text-foreground">
-                <DialogTitle className="text-xl font-bold">Settings & Data</DialogTitle>
+            <DialogContent className="sm:max-w-md premium-glass glass-edge-highlight border-primary/30 text-foreground overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
+                <DialogTitle className="text-xl font-black uppercase tracking-widest text-white drop-shadow-md">Settings & Data</DialogTitle>
                 <div className="space-y-4 pt-4">
-                    <Button onClick={handleExport} className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 justify-start">
-                        <Download className="w-4 h-4 mr-3" /> Export All Data (JSON)
+                    <Button onClick={handleExport} className="w-full glass-card hover:glass-card-hover border-white/10 justify-start transition-all text-white">
+                        <Download className="w-4 h-4 mr-3 text-primary" /> Export All Data (JSON)
                     </Button>
 
                     <div className="relative">
                         <Input type="file" accept=".json" onChange={handleImport} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                        <Button variant="outline" className="w-full border-primary/30 justify-start">
-                            <Upload className="w-4 h-4 mr-3" /> Import Data Backup
+                        <Button variant="outline" className="w-full glass-card hover:glass-card-hover border-white/10 justify-start transition-all text-white">
+                            <Upload className="w-4 h-4 mr-3 text-primary" /> Import Data Backup
                         </Button>
                     </div>
 
-                    <div className="pt-2 border-t border-white/10 space-y-3">
-                        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">Data Management</p>
-                        <Button onClick={handleLoadDemo} variant="outline" className="w-full border-primary/30 text-primary hover:bg-primary/10 justify-start">
-                            <Database className="w-4 h-4 mr-3" /> Load Previous Season Data ({store.clients.length === 0 ? "Ready" : "Overlay"})
+                    <div className="pt-4 border-t border-white/10 space-y-3 mt-2">
+                        <p className="text-[10px] uppercase tracking-widest text-primary font-black opacity-80 mb-2">Data Management</p>
+                        <Button onClick={handleLoadDemo} variant="outline" className="w-full stealth-noir-glass border-primary/30 hover:bg-primary/20 hover:border-primary/50 text-white justify-start transition-all">
+                            <Database className="w-4 h-4 mr-3 text-primary" /> Load Demo Data ({store.clients.length === 0 ? "Ready" : "Overlay"})
                         </Button>
-                        <Button onClick={handleClearAll} variant="outline" className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 justify-start">
+                        <Button onClick={handleClearAll} variant="outline" className="w-full stealth-noir-glass border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-300 justify-start transition-all">
                             <Trash2 className="w-4 h-4 mr-3" /> Clear All Data
                         </Button>
                     </div>

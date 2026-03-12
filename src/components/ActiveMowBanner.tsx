@@ -78,7 +78,7 @@ export function ActiveMowBanner() {
 
     return (
         <div className="fixed bottom-[80px] left-0 right-0 z-40 px-4 animate-in slide-in-from-bottom-2 fade-in duration-300">
-            <div className="mx-auto max-w-md relative overflow-hidden rounded-2xl glass-card border border-primary/40 bg-[#0a150c]/80 backdrop-blur-xl shadow-lg shadow-primary/10">
+            <div className="mx-auto max-w-md relative overflow-hidden rounded-2xl premium-glass glass-edge-highlight border border-primary/40 shadow-lg shadow-primary/10">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70"></div>
                 <div className="p-4 relative z-10">
                     <div className="flex justify-between items-center mb-3">

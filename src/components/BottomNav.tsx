@@ -20,7 +20,7 @@ export function BottomNav() {
     const isActive = (href: string) => pathname.startsWith(href);
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 h-[92px] bg-[#0a0f0d]/90 backdrop-blur-2xl flex justify-around items-stretch safe-area-bottom pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.4)] before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 h-[92px] premium-glass glass-edge-highlight flex justify-around items-stretch safe-area-bottom pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.4)]">
             {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const active = isActive(tab.href);

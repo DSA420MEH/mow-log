@@ -110,7 +110,7 @@ export function WeatherWidget({ lat, lng }: WeatherWidgetProps) {
     }
 
     return (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl shadow-[0_0_15px_rgba(0,0,0,0.2)] overflow-hidden relative">
+        <div className="premium-glass glass-edge-highlight rounded-2xl overflow-hidden relative shadow-[0_0_30px_rgba(0,0,0,0.3)]">
             <div className={`absolute top-0 left-0 w-1.5 h-full ${statusClass.split(' ')[0]}`} />
 
             {/* Top row: current conditions & decision badge */}

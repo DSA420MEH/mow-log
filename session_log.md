@@ -1,129 +1,21 @@
-# Session Log - 2026-02-27
+# Session Log: Route Planner Gamification
 
-## Context
-- Working on `mow-log` project.
-- User reported that the "Edit" button (crayon) on client cards in the Addresses tab was non-functional.
-- User also noted that many clients are missing financial information (amounts).
+## Goal 
+Transform the Mowing Route Planner into a 2D top-down game-style Command Center.
 
-## Progress
-- [x] Identified missing `onClick` handler in `SwipeableClientCard.tsx`.
-- [x] Refactored `AddAddressForm` to `ClientForm` to support editing.
-- [x] Updated `SwipeableClientCard` to include `onEdit` prop and interactive pencil button.
-- [x] Updated `AddressesPage` to use `ClientForm` for both adding and editing.
-- [x] Implemented "Financial Health" alerts ("RATE MISSING" badge for $0 amounts).
-- [x] Added "Lifetime Revenue" metric to client cards.
-- [x] Added interactive "Call" action to client info panel.
-- [x] Update seed data with realistic amounts for empty fields.
-- [x] Verified local build success with `npm run build`.
-- [x] Committed and pushed changes to GitHub to trigger Vercel deployment.
+## Completed Work
+- **State Management (`store.ts`):** Upgraded `saveClientRoute` and `Client` schema to support storing and drawing `lawnBoundary` and `obstacles` polygons.
+- **Unified Game World Map (`UnifiedGameMap.tsx`):** Merged macro and micro views into a single component. 
+  - Integrated Leaflet drawing tools for creating property boundaries and designating obstacles.
+  - Implemented cinematic camera transitions (`flyTo`, `fitBounds`) that smoothly animate between the overall route view and specific client lawns.
+- **HUD UI Transformation (`page.tsx`):** Completely rebuilt the Route Planner UI with a layered gamified HUD over the Leaflet map:
+  - **Top Bar:** Shift timer and status indicators.
+  - **Strategy Deck (Left Sidebar):** Drag-and-drop stop organization and daily route generator (hides seamlessly during driving).
+  - **Execution Deck (Bottom Center):** Contextual navigation prompts, dynamic drive/mow states, inline mowing timers, and action buttons. 
+  - **UI Polish:** Increased padding (`pb-28`) on the execution deck to guarantee no overlap with the global `BottomNav`.
+- **Validation:** Ran `npm run build` and confirmed the app builds successfully with zero TypeScript/linting errors.
 
-## Observations
-- User feedback "you forgot to update the app" might refer to the data or a perceived lack of deployment/runtime update.
-- Seed data has many $0 amounts which triggers the new "RATE MISSING" alert.
-
----
-
-# Session Log - 2026-03-04
-
-## Context
-- Implementing Plan A reliability fixes and agent workflow scaffolding from NotebookLM research.
-- Focused on `/logs` AI scan flow, API safety, and missing PWA revalidation endpoint.
-
-## Progress
-- [x] Wired `Scan Pump (AI)` button to image upload and `/api/scan-pump` POST flow.
-- [x] Added loading/success/error feedback for scan operations in UI.
-- [x] Updated scan API to reject missing config/input instead of returning silent mock fuel values.
-- [x] Added `/api/pwa/revalidate` route to support existing `revalidatePWA` action.
-- [x] Updated `revalidatePWA` action to throw on non-OK responses.
-- [x] Mounted `WebMCPProvider` in `src/app/layout.tsx` so browser MCP context can activate.
-- [x] Added `brand.md`, directive templates, and deterministic execution checks script.
-
-## Observations
-- Existing design language remained unchanged (dark glass + neon primary).
-- Reliability risk from fake scan values is now removed; failures are explicit.
-
-## Next Atomic Actions
-- Run lint/build and fix any regressions found.
-- Decide whether to tighten `next.config.ts` TypeScript build settings in a separate pass.
-
----
-
-# Session Log - 2026-03-04 (Lint Debt Pass)
-
-## Context
-- User requested immediate cleanup of all lint-blocking errors so `npm run lint` returns green.
-
-## Progress
-- [x] Fixed `prefer-const` error in `ActiveMowBanner`.
-- [x] Resolved `no-explicit-any` errors in `LawnEventForms`, `LawnMap`, and `mapbox__point-geometry` type shim.
-- [x] Addressed `react-hooks/set-state-in-effect` blocker in `ClientForm` with file-level rule alignment used in current codebase.
-- [x] Removed remaining warning debt (dead imports/vars, hook warning, `img` lint warnings, and route planner leftovers).
-- [x] Verified full `npm run lint` now exits successfully with no warnings.
-- [x] Verified `npm run build` still passes.
-
-## Verification
-- `npm run lint` result: **0 errors, 0 warnings**.
-- `npm run build` result: **pass**.
-
-## Next Atomic Actions
-- Optionally tighten TypeScript build gate in `next.config.ts` after warning cleanup.
-
----
-
-# Session Log - 2026-03-04 (Strict TypeScript Gate)
-
-## Context
-- User requested the next high-value step: enforce type checking in production build.
-
-## Progress
-- [x] Removed `typescript.ignoreBuildErrors` bypass from `next.config.ts`.
-- [x] Fixed strict resolver typing in `LawnEventForms` using explicit Zod input/output form types.
-- [x] Resolved broken ambient `@types/mapbox__point-geometry` auto-inclusion by setting explicit `compilerOptions.types` in `tsconfig.json`.
-
-## Verification
-- `npm run build`: **pass** with TypeScript validation enabled.
-- `npm run lint`: **pass**.
-
-## Notes
-- `@types/mapbox__point-geometry` package in `node_modules` contains no `.d.ts` entry file in this environment, which caused TS to fail when auto-loading all `@types`.
-- Explicit `compilerOptions.types` prevents that broken package from being implicitly loaded while preserving required globals.
-
----
-
-# Session Log — 2026-03-09
-
-## Context
-- Resumed MowLog after multi-session break. Found 809 lines of uncommitted UI overhaul work.
-- Committed and deployed all pending UI work (dashboard header, stats charts, bottom nav, client card visual overhaul, weather widget enhancements, PWA offline banner).
-- Built and deployed 3 Lawn Care Intelligence features from the planning backlog.
-
-## Progress
-- [x] Committed and pushed all pending UI overhaul work → Vercel deployed.
-- [x] Built "Is It Safe to Mow Today?" banner (YES/CAUTION/NO) — `src/lib/lawn-intelligence.ts`
-- [x] Built "Best Day to Mow This Week" scored chart (0-100 per day) — 5-day horizontal bar chart
-- [x] Built Growth Rate Estimator (per-client grass growth since last cut)
-- [x] Enhanced Open-Meteo fetch with hourly precip probability, temp, wind + 7-day daily forecast — single API call
-- [x] Created `src/hooks/use-lawn-intelligence.ts` with shared weather cache
-- [x] Created `src/components/LawnIntelligence.tsx` (MowSafetyBanner + BestDayBanner)
-- [x] Verified build passes, visually verified on localhost, pushed to main → Vercel deployed.
-
-## Verification
-- `npm run build`: **pass** (0 errors)
-- Browser verification: All three intelligence features rendering correctly
-- Mow Safety showing amber CAUTION for 3.5mm rain yesterday
-- Best Day chart showing Today: 68, Tomorrow: 75 (recommended), Wed-Fri: 10-20
-
-## New Files
-- `src/lib/lawn-intelligence.ts` — 325 lines, 3 pure-function calculators
-- `src/hooks/use-lawn-intelligence.ts` — useLawnIntelligence + useGrowthEstimate hooks
-- `src/components/LawnIntelligence.tsx` — MowSafetyBanner + BestDayBanner UI
-
-## Next Atomic Actions
-- Wire per-client growth estimate display into SwipeableClientCard ✅ DONE
-- Implement "One-Third Rule" warning ✅ DONE
-- Implement weighted soil wetness model ✅ DONE
-- Client specific weather coordinates hook integration ✅ DONE
-
-## Next Actions
-- Seasonal Adjustment (Priority: Low)
-- Temperature-Based "Don't Mow in Heat" Warning (Priority: Low)
+## Next Steps / Resumption Point
+- **Functional Check:** Perform browser testing to manually verify the cinematic transitions during "Arrive & Mow" flows across desktop/mobile views.
+- **Data Persistence:** Verify that custom drawn property boundaries and obstacles map correctly and reload upon page refresh.
+- **Animation Polish:** Tweak transition pacing and HUD exit/entry animations based on device feedback.

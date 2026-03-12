@@ -13,6 +13,7 @@ import { optimizeRoute, recalculateRoute, type OptimizedRoute } from "@/lib/rout
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import { ClientForm } from "@/components/ClientForm";
 
 const UnifiedGameMap = dynamic(() => import("@/components/UnifiedGameMap"), {
     ssr: false,
@@ -75,11 +76,16 @@ function RoutePlannerContent() {
         activeRouteStops, currentRouteStopIndex, startDriveMode, advanceRouteStop, cancelDriveMode,
         startMowSession, endMowSession, toggleMowBreak, toggleMowStuck, sessions, activeMowSessionId,
         activeWorkdaySessionId, startWorkdaySession, endWorkdaySession, toggleWorkdayBreak,
-        saveClientRoute, updateClient
+        saveClientRoute, updateClient,
+        plannerSelectedClientIds, setPlannerSelectedClientIds,
+        plannerOptimizedRoute, setPlannerOptimizedRoute
     } = useStore();
 
     const [editingClientId, setEditingClientId] = useState<string | null>(null);
     const editingClient = editingClientId ? clients.find(c => c.id === editingClientId) : null;
+
+    const [editingAddressClientId, setEditingAddressClientId] = useState<string | null>(null);
+    const editingAddressClient = editingAddressClientId ? clients.find(c => c.id === editingAddressClientId) : null;
 
     const clientsWithCoords = clients.filter(c => c.lat && c.lng);
 
@@ -88,8 +94,9 @@ function RoutePlannerContent() {
         [clients, initClientId]
     );
 
-    const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
-    const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
+    const selectedClientIds = useMemo(() => new Set(plannerSelectedClientIds), [plannerSelectedClientIds]);
+    const optimizedRoute = plannerOptimizedRoute;
+
     const [homeInput, setHomeInput] = useState(homeAddress || "");
     const [settingHome, setSettingHome] = useState(false);
 
@@ -119,22 +126,20 @@ function RoutePlannerContent() {
     };
 
     const toggleClient = (id: string) => {
-        setSelectedClientIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id); else next.add(id);
-            return next;
-        });
-        setOptimizedRoute(null);
+        const next = new Set(selectedClientIds);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        setPlannerSelectedClientIds(Array.from(next));
+        setPlannerOptimizedRoute(null);
     };
 
     const selectAll = () => {
-        setSelectedClientIds(new Set(clientsWithCoords.map(c => c.id)));
-        setOptimizedRoute(null);
+        setPlannerSelectedClientIds(clientsWithCoords.map(c => c.id));
+        setPlannerOptimizedRoute(null);
     };
 
     const clearAll = () => {
-        setSelectedClientIds(new Set());
-        setOptimizedRoute(null);
+        setPlannerSelectedClientIds([]);
+        setPlannerOptimizedRoute(null);
     };
 
     const generateDailyRoute = () => {
@@ -152,7 +157,7 @@ function RoutePlannerContent() {
             }));
 
         const result = optimizeRoute(homeLat, homeLng, selected, fuelCostPerKm);
-        setOptimizedRoute(result);
+        setPlannerOptimizedRoute(result);
     };
 
     const handleDragEnd = (result: DropResult) => {
@@ -163,44 +168,55 @@ function RoutePlannerContent() {
         items.splice(result.destination.index, 0, reorderedItem);
 
         const newRoute = recalculateRoute(homeLat, homeLng, items, fuelCostPerKm);
-        setOptimizedRoute(newRoute);
+        setPlannerOptimizedRoute(newRoute);
     };
 
     const geocodeHome = useCallback(async () => {
         if (!homeInput.trim()) return;
         setSettingHome(true);
         try {
+            let query = homeInput;
+            if (!homeInput.includes(',') && homeAddress && homeAddress.includes(',')) {
+                const cityRegion = homeAddress.substring(homeAddress.indexOf(','));
+                query = homeInput + cityRegion;
+            }
+
             const res = await fetch(
-                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(homeInput)}&format=json&limit=1`
+                `/api/places/autocomplete?q=${encodeURIComponent(query)}`
             );
             const data = await res.json();
             if (data.length > 0) {
-                setHomeAddress(homeInput, parseFloat(data[0].lat), parseFloat(data[0].lon));
+                setHomeAddress(homeInput, parseFloat(data[0].lat), parseFloat(data[0].lng));
             }
         } catch (err) {
             console.error("Geocoding failed:", err);
         }
         setSettingHome(false);
-    }, [homeInput, setHomeAddress]);
+    }, [homeInput, homeAddress, setHomeAddress]);
 
     return (
-        <div className="relative w-full h-[100dvh] overflow-hidden bg-black text-foreground font-sans">
+        <div className="relative w-full h-full min-h-[100dvh] overflow-hidden bg-black text-foreground font-sans">
             {/* 1. Map Background (Z: 0) */}
-            <UnifiedGameMap editingClientId={editingClientId} onSaveBoundaries={(clientId, lawnBoundary, obstacles) => {
-                const client = clients.find(c => c.id === clientId);
-                if (client && client.lat && client.lng) {
-                    saveClientRoute(clientId, client.routeScreenshot || '', client.lat, client.lng, lawnBoundary || undefined, obstacles.length > 0 ? obstacles : undefined);
-                }
-                setEditingClientId(null);
-            }} onPinMoved={(clientId, lat, lng) => {
-                updateClient(clientId, { lat, lng });
-            }} />
+            <UnifiedGameMap 
+                editingClientId={editingClientId} 
+                onSaveBoundaries={(clientId, lawnBoundary, obstacles) => {
+                    const client = clients.find(c => c.id === clientId);
+                    if (client && client.lat && client.lng) {
+                        saveClientRoute(clientId, client.routeScreenshot || '', client.lat, client.lng, lawnBoundary || undefined, obstacles.length > 0 ? obstacles : undefined);
+                    }
+                    setEditingClientId(null);
+                }} 
+                onPinMoved={(clientId, lat, lng) => {
+                    updateClient(clientId, { lat, lng });
+                }}
+                onClientClick={toggleClient}
+            />
 
-            {/* 2. HUD Overlays (Z: 10) */}
-            <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
+            {/* 2. HUD Overlays (Z: 50) */}
+            <div className="absolute inset-0 z-50 pointer-events-none flex flex-col justify-between">
 
                 {/* ─── TOP HUD ─── */}
-                <header className="w-full flex justify-between items-start p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-auto">
+                <header className={`w-full flex justify-between items-start p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent ${editingClientId ? 'pointer-events-none' : 'pointer-events-auto'}`}>
                     {/* Left: Branding & Back */}
                     <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-3">
@@ -218,7 +234,7 @@ function RoutePlannerContent() {
 
                     {/* Right: Master Shift Timer */}
                     {activeWorkday && !completedWorkdayInfo && (
-                        <div className="bg-black/60 backdrop-blur-md border border-primary/30 rounded-xl p-3 shadow-[0_0_20px_rgba(204,255,0,0.1)] flex items-center gap-4">
+                        <div className="premium-glass glass-edge-highlight border border-primary/30 rounded-xl p-3 shadow-[0_0_20px_rgba(204,255,0,0.1)] flex items-center gap-4">
                             <div>
                                 <div className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5 opacity-80">
                                     <Clock className="w-3 h-3" /> Shift Timer
@@ -235,7 +251,7 @@ function RoutePlannerContent() {
                             </div>
                             <button
                                 onClick={toggleWorkdayBreak}
-                                className={`px-4 py-2 border rounded-lg text-xs font-bold transition-all uppercase tracking-wider ${activeWorkday.status === 'break' ? 'bg-orange-500/20 text-orange-400 border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.2)]' : 'bg-white/10 text-white hover:bg-white/20 border-white/20'}`}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all uppercase tracking-wider ${activeWorkday.status === 'break' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.2)]' : 'glass-card hover:glass-card-hover text-white border border-white/20'}`}
                             >
                                 {activeWorkday.status === 'break' ? 'Resume' : 'Pause'}
                             </button>
@@ -249,12 +265,12 @@ function RoutePlannerContent() {
 
                     {/* PLANNER SIDEBAR (Only show when NOT driving) */}
                     {!isDrivingActive && !completedWorkdayInfo && !isFinished && (
-                        <div className="w-80 h-full flex flex-col pointer-events-auto bg-black/70 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl relative animate-in slide-in-from-left-8 duration-500 overflow-hidden">
+                        <div className="w-80 h-full flex flex-col pointer-events-auto premium-glass glass-edge-highlight rounded-2xl shadow-2xl relative animate-in slide-in-from-left-8 duration-500 overflow-hidden">
 
                             {/* Decorative Top Accent */}
                             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
 
-                            <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+                            <div className="p-4 border-b border-white/10 stealth-noir-glass">
                                 <h2 className="text-sm font-black uppercase tracking-widest text-white/80 flex items-center gap-2">
                                     <RouteIcon className="w-4 h-4 text-primary" /> Route Control
                                 </h2>
@@ -273,12 +289,12 @@ function RoutePlannerContent() {
                                             value={homeInput}
                                             onChange={(e) => setHomeInput(e.target.value)}
                                             onKeyDown={(e) => e.key === "Enter" && geocodeHome()}
-                                            className="flex-1 px-3 py-2 rounded-lg bg-black/50 border border-white/20 text-white text-xs font-mono focus:border-primary focus:outline-none transition-colors"
+                                            className="flex-1 px-3 py-2 rounded-lg stealth-noir-glass border border-white/20 text-white text-xs font-mono focus:border-primary focus:outline-none transition-colors"
                                         />
                                         <button
                                             onClick={geocodeHome}
                                             disabled={settingHome}
-                                            className="px-3 py-2 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 text-xs font-bold disabled:opacity-50 transition-colors"
+                                            className="px-3 py-2 rounded-lg glass-card hover:glass-card-hover border border-primary/30 text-primary hover:bg-primary/20 text-xs font-bold disabled:opacity-50 transition-colors"
                                         >
                                             {settingHome ? "..." : homeLat ? "Set" : "Set"}
                                         </button>
@@ -311,8 +327,8 @@ function RoutePlannerContent() {
                                                     className={`rounded-xl text-xs transition-all border overflow-hidden ${!hasCoords
                                                         ? "bg-red-500/5 border-red-500/10 opacity-50"
                                                         : isSelected
-                                                            ? "bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(204,255,0,0.15)]"
-                                                            : "bg-black/40 border-white/5 hover:bg-white/[0.03]"
+                                                            ? "stealth-noir-glass border-primary/50 shadow-[0_0_15px_rgba(204,255,0,0.15)]"
+                                                            : "glass-card hover:glass-card-hover border-white/10"
                                                         }`}
                                                 >
                                                     {/* Top row: checkbox + name + edit */}
@@ -353,17 +369,28 @@ function RoutePlannerContent() {
                                                             {hasCoords && hasBoundary && (
                                                                 <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold uppercase" title="Lawn boundary saved">✓ Map</span>
                                                             )}
-                                                            {/* Edit Button */}
+                                                            {/* Edit Info Button (Always visible) */}
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditingAddressClientId(client.id);
+                                                                }}
+                                                                className={`w-7 h-7 rounded-lg glass-card hover:glass-card-hover hover:border-primary/30 hover:text-primary text-white/40 flex items-center justify-center transition-all`}
+                                                                title="Edit client info"
+                                                            >
+                                                                <Pencil className="w-3 h-3" />
+                                                            </button>
+                                                            {/* Edit Boundary Button */}
                                                             {hasCoords && (
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setEditingClientId(client.id);
                                                                     }}
-                                                                    className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 hover:bg-primary/20 hover:border-primary/30 hover:text-primary text-white/40 flex items-center justify-center transition-all"
+                                                                    className="w-7 h-7 rounded-lg glass-card hover:glass-card-hover hover:border-emerald-500/30 hover:text-emerald-400 text-white/40 flex items-center justify-center transition-all"
                                                                     title="Edit lawn boundaries"
                                                                 >
-                                                                    <Pencil className="w-3 h-3" />
+                                                                    <MapPin className="w-3 h-3" />
                                                                 </button>
                                                             )}
                                                         </div>
@@ -379,8 +406,8 @@ function RoutePlannerContent() {
                                     onClick={generateDailyRoute}
                                     disabled={!homeLat || selectedClientIds.size === 0}
                                     className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${homeLat && selectedClientIds.size > 0
-                                        ? "bg-white text-black hover:bg-gray-200 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-                                        : "bg-white/5 text-white/20 border border-white/5 cursor-not-allowed"
+                                        ? "bg-primary text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(204,255,0,0.3)]"
+                                        : "stealth-noir-glass text-white/20 border border-white/10 cursor-not-allowed"
                                         }`}
                                 >
                                     Initiate Route Planning
@@ -404,7 +431,7 @@ function RoutePlannerContent() {
                                                                     <div
                                                                         ref={provided.innerRef}
                                                                         {...provided.draggableProps}
-                                                                        className={`flex items-center gap-2 px-2 py-2 rounded-lg text-xs transition-all border ${snapshot.isDragging ? "bg-primary/20 border-primary shadow-xl z-50 backdrop-blur-md" : "bg-black/40 border-white/5 hover:bg-white/5"
+                                                                        className={`flex items-center gap-2 px-2 py-2 rounded-lg text-xs transition-all border ${snapshot.isDragging ? "bg-primary/20 border-primary shadow-xl z-50 backdrop-blur-md" : "glass-card hover:glass-card-hover border-white/10"
                                                                             }`}
                                                                     >
                                                                         <div {...provided.dragHandleProps} className="text-white/20 p-1 cursor-grab active:cursor-grabbing">
@@ -442,11 +469,11 @@ function RoutePlannerContent() {
 
 
                 {/* ─── BOTTOM HUD (DRIVE / MOW OVERLAYS) ─── */}
-                <div className="w-full px-4 pb-8 pt-20 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none flex flex-col items-center justify-end">
+                <div className="w-full px-4 pb-28 pt-20 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none flex flex-col items-center justify-end">
 
                     {/* Shift Complete State */}
                     {completedWorkdayInfo && (
-                        <div className="pointer-events-auto bg-black border border-white/10 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-700">
+                        <div className="pointer-events-auto premium-glass glass-edge-highlight rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-700">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
                             <div className="w-20 h-20 rounded-full bg-primary/20 text-primary flex items-center justify-center shadow-[0_0_30px_rgba(204,255,0,0.3)] mx-auto mb-6">
@@ -469,7 +496,7 @@ function RoutePlannerContent() {
 
                             <button
                                 onClick={() => { setCompletedWorkdayId(null); cancelDriveMode(); }}
-                                className="w-full py-4 rounded-xl font-black uppercase tracking-widest bg-white text-black hover:scale-105 transition-transform"
+                                className="w-full py-4 rounded-xl font-black uppercase tracking-widest glass-card hover:glass-card-hover text-white transition-all border border-white/20"
                             >
                                 Return to Command Center
                             </button>
@@ -478,7 +505,7 @@ function RoutePlannerContent() {
 
                     {/* Returning Home State */}
                     {isFinished && !completedWorkdayInfo && (
-                        <div className="pointer-events-auto bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 max-w-md w-full text-center shadow-2xl animate-in slide-in-from-bottom-8 duration-500">
+                        <div className="pointer-events-auto premium-glass glass-edge-highlight rounded-3xl p-6 max-w-md w-full text-center shadow-2xl animate-in slide-in-from-bottom-8 duration-500">
                             <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 mx-auto mb-4">
                                 <Home className="w-8 h-8" />
                             </div>
@@ -505,7 +532,7 @@ function RoutePlannerContent() {
                                 [ABORT ROUTE]
                             </button>
 
-                            <div className="bg-black/70 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden animate-in slide-in-from-bottom-12 duration-500">
+                            <div className="premium-glass glass-edge-highlight rounded-3xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden animate-in slide-in-from-bottom-12 duration-500">
 
                                 {/* Status Indicator */}
                                 <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
@@ -532,7 +559,7 @@ function RoutePlannerContent() {
                                         {isMowingCurrent ? (
                                             /* MOWING HUD CONTROLS */
                                             <div className="w-full">
-                                                <div className="bg-black/50 border border-white/5 rounded-2xl p-4 text-center mb-4">
+                                                <div className="stealth-noir-glass border border-white/10 rounded-2xl p-4 text-center mb-4">
                                                     <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${activeSession?.status === 'break' ? 'text-orange-400' : activeSession?.status === 'stuck' ? 'text-red-400' : 'text-primary animate-pulse'}`}>
                                                         {activeSession?.status === 'break' ? 'PAUSED' : activeSession?.status === 'stuck' ? 'OBSTACLE DETECTED' : 'ENGAGED'}
                                                     </div>
@@ -549,15 +576,15 @@ function RoutePlannerContent() {
                                                 </div>
 
                                                 <div className="grid grid-cols-[1fr_1fr_2fr] gap-2">
-                                                    <button onClick={toggleMowBreak} className={`py-4 rounded-xl flex items-center justify-center border transition-colors ${activeSession?.status === 'break' ? 'bg-orange-500/20 border-orange-500/50 text-orange-400' : 'bg-white/5 border-white/10 hover:bg-white/10 text-white'}`}>
+                                                    <button onClick={toggleMowBreak} className={`py-4 rounded-xl flex items-center justify-center border transition-colors ${activeSession?.status === 'break' ? 'bg-orange-500/20 border-orange-500/50 text-orange-400' : 'glass-card hover:glass-card-hover border-white/10 text-white'}`}>
                                                         {activeSession?.status === 'break' ? <Play className="w-5 h-5" /> : <PauseCircle className="w-5 h-5" />}
                                                     </button>
-                                                    <button onClick={toggleMowStuck} className={`py-4 rounded-xl flex items-center justify-center border transition-colors ${activeSession?.status === 'stuck' ? 'bg-red-500/20 border-red-500/50 text-red-500' : 'bg-white/5 border-white/10 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 text-white/50'}`}>
+                                                    <button onClick={toggleMowStuck} className={`py-4 rounded-xl flex items-center justify-center border transition-colors ${activeSession?.status === 'stuck' ? 'bg-red-500/20 border-red-500/50 text-red-500' : 'glass-card hover:glass-card-hover hover:bg-red-500/20 border-white/10 hover:text-red-400 hover:border-red-500/30 text-white/50'}`}>
                                                         <AlertTriangle className="w-5 h-5" />
                                                     </button>
                                                     <button
                                                         onClick={() => { endMowSession(); advanceRouteStop(); }}
-                                                        className="py-4 bg-primary text-black font-black uppercase tracking-widest text-sm rounded-xl hover:scale-[1.02] shadow-[0_0_20px_rgba(204,255,0,0.2)] transition-all flex items-center justify-center gap-2"
+                                                        className="py-4 glass-card hover:glass-card-hover border-primary/50 text-primary hover:bg-primary/20 font-black uppercase tracking-widest text-sm rounded-xl hover:scale-[1.02] shadow-[0_0_20px_rgba(204,255,0,0.1)] transition-all flex items-center justify-center gap-2"
                                                     >
                                                         <CheckCircle2 className="w-5 h-5" /> Done
                                                     </button>
@@ -568,7 +595,7 @@ function RoutePlannerContent() {
                                             <div className="flex flex-col gap-3 w-full md:w-64">
                                                 <a
                                                     href={mapUrlForLeg} target="_blank" rel="noopener noreferrer"
-                                                    className="w-full py-4 rounded-xl border border-blue-500/50 bg-blue-500/10 text-blue-400 font-bold uppercase tracking-widest text-[11px] hover:bg-blue-500/20 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                                                    className="w-full py-4 rounded-xl border border-blue-500/50 glass-card hover:glass-card-hover hover:bg-blue-500/20 text-blue-400 font-bold uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 transition-colors cursor-pointer"
                                                 >
                                                     <Navigation className="w-4 h-4" /> Nav Systems
                                                 </a>
@@ -590,7 +617,7 @@ function RoutePlannerContent() {
                 {/* ─── CLIENT EDITING OVERLAY ─── */}
                 {editingClient && (
                     <div className="absolute inset-x-0 top-20 z-30 flex justify-center pointer-events-none px-4 animate-in slide-in-from-top-4 fade-in duration-300">
-                        <div className="pointer-events-auto bg-black/80 backdrop-blur-2xl border border-primary/30 rounded-2xl p-5 shadow-[0_0_40px_rgba(204,255,0,0.15)] max-w-md w-full relative overflow-hidden">
+                        <div className="pointer-events-auto premium-glass glass-edge-highlight border border-primary/30 rounded-2xl p-5 shadow-[0_0_40px_rgba(204,255,0,0.15)] max-w-md w-full relative overflow-hidden">
                             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent" />
                             <div className="flex items-start justify-between mb-4">
                                 <div>
@@ -613,7 +640,7 @@ function RoutePlannerContent() {
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => setEditingClientId(null)}
-                                    className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 font-bold uppercase tracking-widest text-[10px] transition-colors"
+                                    className="flex-1 py-3 rounded-xl glass-card hover:glass-card-hover border border-white/10 text-white/60 font-bold uppercase tracking-widest text-[10px] transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -621,6 +648,16 @@ function RoutePlannerContent() {
                         </div>
                     </div>
                 )}
+
+                {/* ─── CLIENT INFO EDITING OVERLAY ─── */}
+                <ClientForm 
+                    initialData={editingAddressClient || undefined} 
+                    open={!!editingAddressClientId} 
+                    onOpenChange={(open) => {
+                        if (!open) setEditingAddressClientId(null);
+                    }}
+                    contentClassName="sm:left-4 sm:top-24 sm:translate-x-0 sm:translate-y-0 w-[calc(100%-2rem)] sm:w-[320px] max-w-none sm:max-w-none"
+                />
 
             </div>
         </div>

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { MowingEvent, WateringEvent, FertilizingEvent } from './schemas';
-import type { RouteStop } from './route-optimizer';
+import type { RouteStop, OptimizedRoute } from './route-optimizer';
 import type { Feature, Polygon } from 'geojson';
 
 export type BillingType = 'Regular' | 'PerCut';
@@ -106,6 +106,11 @@ interface AppState {
     activeRouteStops: RouteStop[] | null;
     currentRouteStopIndex: number;
 
+    // Route Planner State
+    plannerSelectedClientIds: string[];
+    plannerOptimizedRoute: OptimizedRoute | null;
+    hydrated: boolean;
+
     // Actions
     addClient: (client: Omit<Client, 'id' | 'createdAt'>) => void;
     updateClient: (id: string, client: Partial<Client>) => void;
@@ -151,6 +156,11 @@ interface AppState {
     addEquipment: (eq: Omit<Equipment, 'id' | 'currentHours'>) => void;
     markServiceDone: (equipmentId: string, serviceId: string) => void;
     deleteEquipment: (id: string) => void;
+
+    // Route Planner Actions
+    setPlannerSelectedClientIds: (ids: string[]) => void;
+    setPlannerOptimizedRoute: (route: OptimizedRoute | null) => void;
+    setHydrated: (state: boolean) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -168,6 +178,11 @@ export const useStore = create<AppState>()(
             activeMowSessionId: null,
             activeRouteStops: null,
             currentRouteStopIndex: 0,
+
+            plannerSelectedClientIds: [],
+            plannerOptimizedRoute: null,
+            hydrated: false,
+            setHydrated: (h) => set({ hydrated: h }),
 
             // Profile Defaults
             userName: '',
@@ -436,12 +451,13 @@ export const useStore = create<AppState>()(
                     ],
                 })),
 
-            saveClientRoute: (clientId, screenshot, lat, lng, lawnBoundary, obstacles) =>
+            saveClientRoute: (clientId, screenshot, lat, lng, lawnBoundary, obstacles) => {
                 set((state) => ({
                     clients: state.clients.map((c) =>
                         c.id === clientId ? { ...c, routeScreenshot: screenshot, lat, lng, lawnBoundary, obstacles } : c
                     ),
-                })),
+                }));
+            },
 
             setHomeAddress: (address, lat, lng) =>
                 set(() => ({ homeAddress: address, homeLat: lat, homeLng: lng })),
@@ -489,9 +505,27 @@ export const useStore = create<AppState>()(
                 set((state) => ({
                     equipment: state.equipment.filter((e) => e.id !== id),
                 })),
+
+            setPlannerSelectedClientIds: (ids) =>
+                set(() => ({ plannerSelectedClientIds: ids })),
+
+            setPlannerOptimizedRoute: (route) =>
+                set(() => ({ plannerOptimizedRoute: route })),
         }),
         {
             name: 'mow-log-storage',
+            onRehydrateStorage: () => {
+                return (state, error) => {
+                    if (error) {
+                        console.error('STORE: Rehydration failed', error);
+                        return;
+                    }
+                    if (state) {
+                        // Use state.setHydrated to avoid circular reference to 'useStore'
+                        state.setHydrated(true);
+                    }
+                };
+            },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             migrate: (persistedState: any) => {
                 // Handle migration from old activeSessionId to activeWorkdaySessionId

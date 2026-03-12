@@ -14,9 +14,9 @@ const homeIcon = L.divIcon({
     className: "custom-leaflet-icon",
     html: `
         <div class="relative flex items-center justify-center w-8 h-8">
-            <div class="absolute inset-0 rounded-full bg-emerald-500/30 animate-ping"></div>
-            <div class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white shadow-lg flex items-center justify-center relative z-10 text-white shadow-black/50">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <div class="absolute inset-0 rounded-full bg-emerald-500/20 blur-md animate-pulse"></div>
+            <div class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white/80 shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center justify-center relative z-10 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             </div>
         </div>
     `,
@@ -29,8 +29,8 @@ const createStopIcon = (index: number) => L.divIcon({
     className: "custom-leaflet-icon",
     html: `
         <div class="relative flex items-center justify-center w-8 h-8">
-            <div class="absolute inset-0 rounded-full bg-primary/20 backdrop-blur-sm"></div>
-            <div class="w-7 h-7 rounded-full bg-primary border-2 border-black shadow-lg shadow-black flex items-center justify-center relative z-10 text-black font-extrabold text-sm">
+            <div class="absolute inset-0 rounded-full bg-primary/30 blur-sm animate-pulse"></div>
+            <div class="w-7 h-7 rounded-full bg-primary border-2 border-black/80 shadow-[0_0_12px_rgba(195,255,0,0.5)] flex items-center justify-center relative z-10 text-black font-black text-xs">
                 ${index}
             </div>
         </div>
@@ -53,10 +53,11 @@ interface UnifiedGameMapProps {
     editingClientId?: string | null;
     onSaveBoundaries?: (clientId: string, lawnBoundary: Feature<Polygon> | null, obstacles: Feature<Polygon>[]) => void;
     onPinMoved?: (clientId: string, lat: number, lng: number) => void;
+    onClientClick?: (clientId: string) => void;
 }
 
 // ─── Component ──────────────────────────────────
-export default function UnifiedGameMap({ editingClientId = null, onSaveBoundaries, onPinMoved }: UnifiedGameMapProps) {
+export default function UnifiedGameMap({ editingClientId = null, onSaveBoundaries, onPinMoved, onClientClick }: UnifiedGameMapProps) {
     const mapRef = useRef<L.Map | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -163,6 +164,9 @@ export default function UnifiedGameMap({ editingClientId = null, onSaveBoundarie
         map.addControl(drawControl);
         drawControlRef.current = drawControl;
 
+        // Force redraw to ensure controls appear immediately
+        setTimeout(() => map.invalidateSize(), 150);
+
         // Handle polygon creation
         map.on(L.Draw.Event.CREATED, (e: L.LeafletEvent) => {
             const event = e as L.DrawEvents.Created;
@@ -185,6 +189,27 @@ export default function UnifiedGameMap({ editingClientId = null, onSaveBoundarie
             }
         });
 
+        // Handle polygon editing
+        map.on(L.Draw.Event.EDITED, () => {
+            if (isLawn) {
+                lawnLayerRef.current!.eachLayer((layer: any) => {
+                    const geojson = layer.toGeoJSON();
+                    if (geojson.geometry.type === "Polygon") {
+                        setLawnPolygon(geojson as Feature<Polygon>);
+                    }
+                });
+            } else {
+                const updated: Feature<Polygon>[] = [];
+                obstacleLayerRef.current!.eachLayer((layer: any) => {
+                    const geojson = layer.toGeoJSON();
+                    if (geojson.geometry.type === "Polygon") {
+                        updated.push(geojson as Feature<Polygon>);
+                    }
+                });
+                setObstacles(updated);
+            }
+        });
+
         // Handle deletion
         map.on(L.Draw.Event.DELETED, () => {
             if (isLawn) {
@@ -202,69 +227,79 @@ export default function UnifiedGameMap({ editingClientId = null, onSaveBoundarie
     }, [drawMode, isEditingMode]);
 
     // ─── SCENARIO 0: Client Editing Mode ─────────────────────────────────
+    const lastInitializedClientIdRef = useRef<string | null>(null);
+
     useEffect(() => {
         const map = mapRef.current;
-        if (!map || !isClientEditing || !editingClient) return;
-
-        // Clear everything and set up for this specific client
-        lawnLayerRef.current?.clearLayers();
-        obstacleLayerRef.current?.clearLayers();
-        macroRouteLayerRef.current?.clearLayers();
-        routeLayerRef.current?.clearLayers();
-
-        if (editingClient.lat && editingClient.lng) {
-            map.flyTo([editingClient.lat, editingClient.lng], 20, { duration: 1.2, animate: true });
-
-            // Add a DRAGGABLE marker for the client
-            const clientIcon = L.divIcon({
-                className: "custom-leaflet-icon",
-                html: `
-                    <div class="relative flex items-center justify-center w-10 h-10" style="cursor:grab">
-                        <div class="absolute inset-0 rounded-full bg-cyan-500/30 animate-ping"></div>
-                        <div class="w-8 h-8 rounded-full bg-cyan-500 border-3 border-white shadow-lg flex items-center justify-center relative z-10 text-white shadow-black/50" style="border-width:3px">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
-                        </div>
-                    </div>
-                `,
-                iconSize: [40, 40],
-                iconAnchor: [20, 20],
-            });
-            const marker = L.marker([editingClient.lat, editingClient.lng], { icon: clientIcon, draggable: true }).addTo(macroRouteLayerRef.current!);
-
-            // When user drags the pin, update the client's coordinates
-            marker.on('dragend', () => {
-                const pos = marker.getLatLng();
-                if (onPinMoved && editingClientId) {
-                    onPinMoved(editingClientId, pos.lat, pos.lng);
-                }
-            });
-
-            // Add a tooltip so user knows they can drag
-            marker.bindTooltip('Drag to reposition', { direction: 'top', offset: [0, -20], className: 'leaflet-tooltip-dark' });
+        if (!map || !isClientEditing || !editingClient || !editingClientId) {
+            lastInitializedClientIdRef.current = null;
+            return;
         }
 
-        // Load existing boundaries if any
-        if (editingClient.lawnBoundary) {
+        // 1. PIN & VIEW INITIALIZATION (Only run once per client ID)
+        if (lastInitializedClientIdRef.current !== editingClientId) {
+            lastInitializedClientIdRef.current = editingClientId;
+            map.invalidateSize();
+
+            // Clear everything for a fresh start on this client
+            lawnLayerRef.current?.clearLayers();
+            obstacleLayerRef.current?.clearLayers();
+            macroRouteLayerRef.current?.clearLayers();
+            routeLayerRef.current?.clearLayers();
+
+            if (editingClient.lat && editingClient.lng) {
+                map.flyTo([editingClient.lat, editingClient.lng], 20, { duration: 1.2, animate: true });
+
+                const clientIcon = L.divIcon({
+                    className: "custom-leaflet-icon",
+                    html: `
+                        <div class="relative flex items-center justify-center w-10 h-10" style="cursor:grab">
+                            <div class="absolute inset-0 rounded-full bg-cyan-500/30 animate-ping"></div>
+                            <div class="w-8 h-8 rounded-full bg-cyan-500 border-3 border-white shadow-lg flex items-center justify-center relative z-10 text-white shadow-black/50" style="border-width:3px">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
+                            </div>
+                        </div>
+                    `,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20],
+                });
+                const marker = L.marker([editingClient.lat, editingClient.lng], { icon: clientIcon, draggable: true }).addTo(macroRouteLayerRef.current!);
+
+                marker.on('dragend', () => {
+                    const pos = marker.getLatLng();
+                    if (onPinMoved && editingClientId) {
+                        onPinMoved(editingClientId, pos.lat, pos.lng);
+                    }
+                });
+
+                marker.bindTooltip('Drag to reposition', { direction: 'top', offset: [0, -20], className: 'leaflet-tooltip-dark' });
+            }
+        }
+
+        // 2. BOUNDARY SYNC (Run whenever boundary/obstacles in store change)
+        // This ensures that if we save and come back, or if the store updates, the map reflects it
+        // We only do this if the layers are currently empty (first load) or we want to force sync
+        if (lawnLayerRef.current?.getLayers().length === 0 && editingClient.lawnBoundary) {
             L.geoJSON(editingClient.lawnBoundary, {
                 style: { color: "#aaff00", weight: 2, fillOpacity: 0.1, fillColor: "#aaff00" }
-            }).addTo(lawnLayerRef.current!);
+            }).eachLayer(layer => {
+                lawnLayerRef.current!.addLayer(layer);
+            });
             setLawnPolygon(editingClient.lawnBoundary);
-        } else {
-            setLawnPolygon(null);
         }
 
-        if (editingClient.obstacles && editingClient.obstacles.length > 0) {
+        if (obstacleLayerRef.current?.getLayers().length === 0 && editingClient.obstacles && editingClient.obstacles.length > 0) {
             editingClient.obstacles.forEach(obs => {
                 L.geoJSON(obs, {
                     style: { color: "#ff4444", weight: 2, fillOpacity: 0.3, fillColor: "#ff4444" }
-                }).addTo(obstacleLayerRef.current!);
+                }).eachLayer(layer => {
+                    obstacleLayerRef.current!.addLayer(layer);
+                });
             });
             setObstacles(editingClient.obstacles);
-        } else {
-            setObstacles([]);
         }
 
-    }, [editingClientId, editingClient, isClientEditing]);
+    }, [editingClientId, isClientEditing, onPinMoved, editingClient?.lawnBoundary, editingClient?.obstacles]);
 
     // ─── Cinematic Camera Transitions ─────────────────────────────────
     useEffect(() => {
@@ -367,7 +402,26 @@ export default function UnifiedGameMap({ editingClientId = null, onSaveBoundarie
 
                     L.marker([c.lat, c.lng], { icon: clientIcon })
                         .bindPopup(`<strong class="text-black font-mono uppercase tracking-wider">${c.name}</strong>`)
+                        .on('click', () => {
+                            if (onClientClick) onClientClick(c.id);
+                        })
                         .addTo(macroRouteLayerRef.current!);
+
+                    // Render the saved lawn boundaries on the map!
+                    if (c.lawnBoundary) {
+                        L.geoJSON(c.lawnBoundary as any, {
+                            style: { color: "#aaff00", weight: 2, fillOpacity: 0.1, fillColor: "#aaff00" }
+                        }).addTo(lawnLayerRef.current!);
+                    }
+
+                    // Render any saved obstacles
+                    if (c.obstacles && c.obstacles.length > 0) {
+                        c.obstacles.forEach(obs => {
+                            L.geoJSON(obs as any, {
+                                style: { color: "#ff4444", weight: 2, fillOpacity: 0.3, fillColor: "#ff4444" }
+                            }).addTo(obstacleLayerRef.current!);
+                        });
+                    }
                 }
             });
 
@@ -382,13 +436,13 @@ export default function UnifiedGameMap({ editingClientId = null, onSaveBoundarie
 
     return (
         <>
-            <div ref={mapContainerRef} className="absolute inset-0 z-0 w-full h-full bg-[#0a0f0d]" />
+            <div ref={mapContainerRef} className="absolute inset-0 w-full h-full bg-[#0a0f0d] z-0" />
 
             {/* Editing Mode Controls Overlay */}
             {isClientEditing && editingClient && (
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 animate-in slide-in-from-bottom-4 fade-in duration-300">
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[2000] flex items-center gap-3 animate-in slide-in-from-bottom-4 fade-in duration-300">
                     {/* Draw Mode Toggle */}
-                    <div className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl p-1.5 flex gap-1 shadow-2xl">
+                    <div className="premium-glass glass-edge-highlight rounded-2xl p-1.5 flex gap-1 shadow-2xl">
                         <button
                             onClick={() => setDrawMode("lawn")}
                             className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${drawMode === 'lawn'
