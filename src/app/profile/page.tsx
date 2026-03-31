@@ -197,7 +197,7 @@ export default function ProfilePage() {
                 </div>
 
                 {savedCoords ? (
-                    <div className="h-64 w-full rounded-xl overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/5 relative">
+                    <div className="h-96 w-full rounded-xl overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/5 relative">
                         <ProfileLawnMap
                             homeLat={savedCoords.lat}
                             homeLng={savedCoords.lng}
@@ -207,10 +207,17 @@ export default function ProfilePage() {
                             onLocationChange={(lat, lng) => {
                                 setSavedCoords({ lat, lng });
                                 updateProfile(nameInput, addressInput, lat, lng);
-                                setSavedStatus("Pin location corrected manually.");
+                                setSavedStatus("Pin location corrected.");
                                 setTimeout(() => setSavedStatus(null), 2500);
                             }}
                         />
+                        {/* Drag hint — bottom of map, above controls */}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[400] pointer-events-none">
+                            <div className="bg-black/80 backdrop-blur-md border border-primary/30 rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-lg">
+                                <MapPin className="w-3 h-3 text-primary animate-bounce shrink-0" />
+                                <span className="text-[10px] font-black text-primary uppercase tracking-widest whitespace-nowrap">Drag pin to correct position</span>
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <div className="h-48 w-full rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center text-white/30 text-center p-4">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon, CheckCircle2, Leaf } from "lucide-react";
+import { MapPin, Pencil, Timer, Route, TrendingUp, TrendingDown, BarChart3, Clock, Zap, PauseCircle, Calendar, Hash, AlertTriangle, DollarSign, Phone, ArrowLeft, XCircle, LucideIcon, CheckCircle2, Leaf, Mail, Ruler, FileText } from "lucide-react";
 import type { CutHeightRecommendation } from "@/lib/cut-height-calc";
 import Image from "next/image";
 import Link from "next/link";
@@ -91,17 +91,15 @@ function SwipeDots({ count, active }: { count: number; active: number }) {
 }
 
 // ── Metric Card ────────────────────────────────────────────────────────────────
-function Metric({ label, value, icon: Icon, colorClass = "text-primary/60", animStyle, borderHoverClass }: { label: string; value: string | number; icon: LucideIcon; colorClass?: string; animStyle?: React.CSSProperties; borderHoverClass?: string }) {
+function Metric({ label, value, subtext, icon: Icon, colorClass = "text-[#A3FF00]" }: { label: string; value: string | number; subtext?: string; icon: LucideIcon; colorClass?: string }) {
     return (
-        <div className={cn("bg-white/[0.03] rounded-xl p-3 border border-white/5 border-l-2 border-l-transparent group hover:bg-white/[0.05] transition-all duration-200 relative overflow-hidden animate-fade-up", borderHoverClass || "hover:border-l-primary/40")} style={animStyle}>
-            <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Icon className="w-8 h-8" />
+        <div className="bg-[#1f2420] rounded-2xl p-3.5 border border-white/5 flex flex-col justify-center shadow-lg">
+            <div className="flex items-center gap-1.5 mb-1.5">
+                <Icon className={cn("w-3.5 h-3.5", colorClass)} />
+                <span className={cn("text-[10px] font-black tracking-widest uppercase opacity-80", colorClass)}>{label}</span>
             </div>
-            <div className="flex items-center gap-1.5 mb-1 relative z-10">
-                <Icon className={cn("w-3 h-3", colorClass)} />
-                <span className={cn("text-[9px] font-bold tracking-[0.1em] uppercase opacity-70", colorClass)}>{label}</span>
-            </div>
-            <span className="text-lg font-bold text-white relative z-10 tracking-tight">{value}</span>
+            <span className="text-xl font-black text-white leading-none">{value}</span>
+            {subtext && <span className="text-[10px] text-white/40 mt-1">{subtext}</span>}
         </div>
     );
 }
@@ -170,9 +168,9 @@ export function SwipeableClientCard({
 
     const [street, cityZip] = client.address.split(", ");
 
-    let daysSinceColor = "text-primary bg-primary/10";
-    if (stats.daysSinceNum > 10) daysSinceColor = "text-rose-400 bg-rose-500/10";
-    else if (stats.daysSinceNum > 5) daysSinceColor = "text-orange-400 bg-orange-500/10";
+    let daysSinceColor = "text-[#A3FF00] border-[#A3FF00]/30 bg-[#A3FF00]/10";
+    if (stats.daysSinceNum > 10) daysSinceColor = "text-rose-400 border-rose-500/30 bg-rose-500/10";
+    else if (stats.daysSinceNum > 5) daysSinceColor = "text-amber-400 border-amber-500/30 bg-amber-500/10";
 
     const isPositive = profit.profit >= 0;
     const fmtMoney = (n: number) => (n < 0 ? "-$" : "$") + Math.abs(n).toFixed(0);
@@ -232,9 +230,9 @@ export function SwipeableClientCard({
                 <div className="flex items-start justify-between">
                     <div className="flex gap-3 items-start">
                         <div className={cn(
-                            "w-12 h-12 rounded-full flex items-center justify-center font-black text-lg transition-all duration-300 hover:scale-105",
+                            "w-14 h-14 rounded-[16px] flex items-center justify-center font-black text-xl transition-all duration-300 hover:scale-105",
                             avatarStyle.bg, avatarStyle.text, avatarStyle.shadow,
-                            isActiveMowing && "ring-2 ring-primary/60 ring-offset-2 ring-offset-[#1a201c] shadow-[0_0_15px_rgba(195,255,0,0.4)]"
+                            isActiveMowing && "ring-2 ring-[#A3FF00]/60 ring-offset-2 ring-offset-[#1a201c] shadow-[0_0_15px_rgba(163,255,0,0.4)]"
                         )}>
                             {getInitials(client.name)}
                         </div>
@@ -337,167 +335,145 @@ export function SwipeableClientCard({
 
             {/* Swipeable panels container */}
             <div
-                className="swipe-container flex-1"
+                className="flex-1 relative overflow-hidden"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
             >
                 <div
-                    className="swipe-track"
+                    className="flex transition-transform duration-300 ease-out"
                     style={{ transform: `translateX(-${activePanel * 100}%)` }}
                 >
                     {/* ═══ Panel 0: Stats (Default) ═══ */}
-                    <div className="swipe-panel p-4 pt-2">
-                        <div className="flex items-center gap-2 mb-3">
-                            <BarChart3 className="w-4 h-4 text-primary" />
-                            <h4 className="text-sm font-bold text-white">Session Stats</h4>
+                    <div className="w-full shrink-0 min-w-full p-4 pt-4 flex flex-col justify-between">
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                            <Metric label="Visits" value={stats.totalVisits} icon={Hash} colorClass="text-[#A3FF00]" />
+                            <Metric label="Total Time" value={stats.totalTimeStr} icon={Clock} colorClass="text-blue-400" />
+                            <Metric label="Avg / Visit" value={stats.avgTime} icon={Zap} colorClass="text-purple-400" />
+                            <Metric label="Last Visit" value={`${stats.daysSinceNum}d`} subtext="days ago" icon={Calendar} colorClass="text-rose-400" />
+                            <Metric label="Stuck" value={stats.totalStuckStr} icon={Zap} colorClass="text-rose-400" />
+                            <Metric label="Paused" value={stats.totalBreakStr} icon={PauseCircle} colorClass="text-gray-400" />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2.5">
-                            <Metric label="Visits" value={stats.totalVisits} icon={Hash} borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '0ms' }} />
-                            <Metric label="Lifetime" value={`$${profit.revenue.toFixed(0)}`} icon={DollarSign} colorClass="text-emerald-400/60" borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '60ms' }} />
-                            <Metric label="Total Work" value={stats.totalTimeStr} icon={Clock} borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '120ms' }} />
-                            <Metric label="Efficiency" value={stats.avgTime} icon={Zap} colorClass="text-blue-400/60" borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '180ms' }} />
-                            <Metric
-                                label="Recency"
-                                value={stats.daysSince}
-                                icon={Calendar}
-                                colorClass={stats.daysSinceNum > 10 ? "text-rose-400/60" : stats.daysSinceNum > 5 ? "text-amber-400/60" : "text-emerald-400/60"}
-                                borderHoverClass={avatarStyle.borderLeft}
-                                animStyle={{ animationDelay: '240ms' }}
-                            />
-                            <Metric label="Stuck" value={stats.totalStuckStr} icon={Zap} colorClass="text-rose-400/60" borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '300ms' }} />
-                            <Metric label="Paused" value={stats.totalBreakStr} icon={PauseCircle} colorClass="text-gray-400/60" borderHoverClass={avatarStyle.borderLeft} animStyle={{ animationDelay: '360ms' }} />
-                        </div>
-
-                        {/* Revenue / Profit Summary */}
                         {showProfit && (
-                            <div className="mt-3 flex gap-2">
-                                <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 text-center transition-all duration-200 hover:scale-[1.02]">
-                                    <span className="text-[10px] text-emerald-400/70 font-bold uppercase tracking-wider block mb-0.5">Revenue</span>
-                                    <span className="text-base font-bold text-emerald-400">${profit.revenue.toFixed(0)}</span>
+                            <div className="flex border border-white/5 rounded-2xl bg-white/[0.02] mb-6 shadow-lg">
+                                <div className="flex-1 p-4 text-center border-r border-white/5">
+                                    <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Earned</div>
+                                    <div className="text-2xl font-black text-white">${profit.revenue.toFixed(0)}</div>
+                                    <div className="text-[10px] text-white/40 mt-1">Season: ${client.amount > 0 ? (client.amount * 7) : 840}</div>
                                 </div>
-                                <div className={cn(
-                                    "flex-1 border rounded-xl p-2.5 text-center transition-all duration-200 hover:scale-[1.02]",
-                                    isPositive ? "bg-emerald-500/10 border-emerald-500/20" : "bg-red-500/10 border-red-500/20"
-                                )}>
-                                    <span className={cn("text-[10px] font-bold uppercase tracking-wider block mb-0.5", isPositive ? "text-emerald-400/70" : "text-red-400/70")}>Profit</span>
-                                    <span className={cn("text-base font-bold", isPositive ? "text-emerald-400" : "text-red-400")}>{fmtMoney(profit.profit)}</span>
+                                <div className="flex-1 p-4 text-center">
+                                    <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Net Profit</div>
+                                    <div className={cn("text-2xl font-black", isPositive ? "text-emerald-400" : "text-rose-500")}>{fmtMoney(profit.profit)}</div>
+                                    <div className="text-[10px] text-white/40 mt-1">after expenses</div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Footer */}
-                        {showChecklist && !isActiveMowing && (
-                            <div className="mt-4 p-3 rounded-xl bg-primary/10 border border-primary/20 animate-in fade-in slide-in-from-bottom-2">
-                                <p className="font-bold text-primary mb-2 flex items-center gap-1.5 text-sm"><CheckCircle2 className="w-4 h-4" /> Pre-Start Checks</p>
-                                <ul className="space-y-1.5 text-[11px] font-medium text-white/80 list-disc list-inside ml-1">
-                                    <li>Fuel level is sufficient for route</li>
-                                    <li>Blades are clean and sharp</li>
-                                    <li>Property hazards (toys, hoses, rocks) cleared</li>
-                                </ul>
-                            </div>
-                        )}
-                        {showRecap && isActiveMowing && (
-                            <div className="mt-4 p-3 rounded-xl bg-white/10 border border-white/20 animate-in fade-in slide-in-from-bottom-2">
-                                <p className="font-bold text-white mb-2 flex items-center gap-1.5 text-sm"><CheckCircle2 className="w-4 h-4" /> Session Recap</p>
-                                <p className="text-[11px] text-white/70 mb-2 leading-tight">You are about to complete the mowing session for {client.name}.</p>
-                                <ul className="space-y-1.5 text-[11px] font-medium text-white/80 list-disc list-inside ml-1">
-                                    <li>All trimmed areas blown clean</li>
-                                    <li>Gates closed and secured</li>
-                                    <li>Mower deck scraped (if wet)</li>
-                                </ul>
-                            </div>
-                        )}
-
-                        <div className="mt-3 pt-3 flex flex-wrap items-center justify-between border-t border-white/5 gap-y-3">
+                        <div className="flex items-center justify-between pb-1">
                             {stats.daysSinceNum >= 0 ? (
-                                <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap", daysSinceColor)}>
+                                <span className={cn("text-xs px-3.5 py-1.5 rounded-full font-bold border", daysSinceColor)}>
                                     {stats.daysSince}
                                 </span>
                             ) : (
-                                <span className="text-xs px-2.5 py-1 rounded-full font-medium text-muted-foreground bg-white/5">
+                                <span className="text-xs px-3.5 py-1.5 rounded-full font-bold text-muted-foreground border border-white/10 bg-white/5">
                                     Never
                                 </span>
                             )}
 
                             {isActiveMowing ? (
                                 showRecap ? (
-                                    <div className="flex items-center gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-right-4">
-                                        <Button onClick={() => setShowRecap(false)} variant="ghost" className="flex-1 sm:flex-none text-xs hover:bg-white/5 h-9 px-3">
+                                    <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-4">
+                                        <Button onClick={() => setShowRecap(false)} variant="ghost" className="text-white hover:bg-white/10 rounded-xl px-4 h-11">
                                             Cancel
                                         </Button>
-                                        <Button onClick={() => { setShowRecap(false); onCompleteMowing(); }} className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-400 text-black font-bold h-9 shadow-[0_4px_15px_rgba(16,185,129,0.3)]">
+                                        <Button onClick={() => { setShowRecap(false); onCompleteMowing(); }} className="rounded-xl font-black bg-emerald-500 hover:bg-emerald-400 text-black px-6 h-11 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
                                             <CheckCircle2 className="w-4 h-4 mr-1.5" /> Confirm
                                         </Button>
                                     </div>
                                 ) : (
-                                    <Button onClick={() => setShowRecap(true)} className="bg-white hover:bg-white/90 text-black font-bold shadow-[0_4px_15px_rgba(255,255,255,0.2)] transition-all active:scale-[0.97]">
+                                    <Button onClick={() => setShowRecap(true)} className="rounded-xl font-black bg-white hover:bg-white/90 text-black px-6 h-11 shadow-[0_4px_15px_rgba(255,255,255,0.2)] transition-all active:scale-[0.97]">
                                         Complete Mowing
                                     </Button>
                                 )
                             ) : (
                                 showChecklist ? (
-                                    <div className="flex items-center gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-right-4">
-                                        <Button onClick={() => setShowChecklist(false)} variant="ghost" className="flex-1 sm:flex-none text-xs hover:bg-white/5 h-9 px-3">
+                                    <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-4">
+                                        <Button onClick={() => setShowChecklist(false)} variant="ghost" className="text-white hover:bg-white/10 rounded-xl px-4 h-11">
                                             Cancel
                                         </Button>
-                                        <Button onClick={() => { setShowChecklist(false); onStartMowing(); }} className="flex-1 sm:flex-none bg-primary hover:bg-primary/90 text-black font-bold h-9 shadow-[0_4px_15px_rgba(170,255,0,0.3)]">
-                                            <Timer className="w-4 h-4 mr-1.5" /> Start Timer
+                                        <Button onClick={() => { setShowChecklist(false); onStartMowing(); }} className="rounded-xl font-black bg-[#A3FF00] hover:bg-[#A3FF00]/90 text-black px-6 h-11 shadow-[0_0_20px_rgba(163,255,0,0.2)]">
+                                            <Timer className="w-4 h-4 mr-1.5" /> Start
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="relative">
-                                        <div className="pointer-events-none absolute inset-0 rounded-full border border-primary/40 animate-ring-pulse" />
-                                        <Button onClick={() => setShowChecklist(true)} className="relative bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[0_4px_15px_rgba(170,255,0,0.2)] hover:shadow-[0_6px_20px_rgba(170,255,0,0.35)] transition-all active:scale-[0.97] rounded-full">
-                                            <Timer className="w-4 h-4 mr-2" /> Start Mowing
-                                        </Button>
-                                    </div>
+                                    <Button onClick={() => setShowChecklist(true)} className="rounded-xl font-black bg-[#A3FF00] hover:bg-[#A3FF00]/90 text-black px-6 h-11 shadow-[0_0_20px_rgba(163,255,0,0.2)]">
+                                        <Timer className="w-4 h-4 mr-2" /> Start Mow
+                                    </Button>
                                 )
                             )}
                         </div>
                     </div>
 
                     {/* ═══ Panel 1: Info ═══ */}
-                    <div className="swipe-panel p-4 pt-2">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Pencil className="w-4 h-4 text-primary" />
-                            <h4 className="text-sm font-bold text-white">Client Info</h4>
-                        </div>
-
-                        {/* Client Details Grid */}
-                        <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
-                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center relative group/phone">
-                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Phone</span>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-gray-100 font-bold text-sm tracking-tight">{client.phone || "—"}</span>
-                                    {client.phone && (
-                                        <a href={`tel:${client.phone}`} className="ml-2 w-7 h-7 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-black transition-all">
-                                            <Phone className="w-3 h-3" />
-                                        </a>
-                                    )}
+                    <div className="w-full shrink-0 min-w-full px-4 pb-2">
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-4 py-4 border-b border-white/5">
+                                <div className="w-12 h-12 rounded-2xl bg-[#A3FF00]/10 flex items-center justify-center shrink-0 border border-[#A3FF00]/20">
+                                    <Phone className="w-5 h-5 text-[#A3FF00]" />
+                                </div>
+                                <div className="flex flex-col overflow-hidden">
+                                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-0.5">Phone</span>
+                                    <span className="text-base font-bold text-white tracking-tight truncate">{client.phone || "—"}</span>
                                 </div>
                             </div>
-                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center overflow-hidden">
-                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Lot Size</span>
-                                <span className="text-gray-100 font-bold text-sm truncate tracking-tight">{client.sqft || "—"}</span>
+                            <div className="flex items-center gap-4 py-4 border-b border-white/5">
+                                <div className="w-12 h-12 rounded-2xl bg-[#A3FF00]/10 flex items-center justify-center shrink-0 border border-[#A3FF00]/20">
+                                    <Mail className="w-5 h-5 text-[#A3FF00]" />
+                                </div>
+                                <div className="flex flex-col overflow-hidden">
+                                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-0.5">Email</span>
+                                    <span className="text-base font-bold text-white tracking-tight truncate">{client.email || "—"}</span>
+                                </div>
                             </div>
-                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center overflow-hidden">
-                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Email</span>
-                                <span className="text-gray-100 font-bold text-sm truncate tracking-tight">{client.email || "—"}</span>
+                            <div className="flex items-center gap-4 py-4 border-b border-white/5">
+                                <div className="w-12 h-12 rounded-2xl bg-[#A3FF00]/10 flex items-center justify-center shrink-0 border border-[#A3FF00]/20">
+                                    <Ruler className="w-5 h-5 text-[#A3FF00]" />
+                                </div>
+                                <div className="flex flex-col overflow-hidden">
+                                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-0.5">Lot Size</span>
+                                    <span className="text-base font-bold text-white tracking-tight truncate">{client.sqft || "—"}</span>
+                                </div>
                             </div>
-                            <div className="bg-white/[0.02] p-3 rounded-xl border border-white/5 flex flex-col justify-center">
-                                <span className="text-[9px] text-primary/60 font-black tracking-widest mb-1 uppercase opacity-70">Contract</span>
-                                <span className="text-gray-100 font-bold text-sm tracking-tight">{client.contractLength || "—"}</span>
+                            <div className="flex items-center gap-4 py-4 border-b border-white/5">
+                                <div className="w-12 h-12 rounded-2xl bg-[#A3FF00]/10 flex items-center justify-center shrink-0 border border-[#A3FF00]/20">
+                                    <FileText className="w-5 h-5 text-[#A3FF00]" />
+                                </div>
+                                <div className="flex flex-col overflow-hidden">
+                                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-0.5">Contract</span>
+                                    <span className="text-base font-bold text-white tracking-tight truncate">{client.contractLength || "—"}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 py-4">
+                                <div className="w-12 h-12 rounded-2xl bg-[#A3FF00]/10 flex items-center justify-center shrink-0 border border-[#A3FF00]/20">
+                                    <DollarSign className="w-5 h-5 text-[#A3FF00]" />
+                                </div>
+                                <div className="flex flex-col overflow-hidden">
+                                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-0.5">Billing</span>
+                                    <span className="text-base font-bold text-white tracking-tight truncate">
+                                        {client.billingType === "Regular" ? `$${client.amount}/month` : `$${client.amount}/cut`}
+                                        {client.amount > 0 && ` - $${client.amount * 7} season`}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {/* ═══ Panel 2: Route ═══ */}
-                    <div className="swipe-panel p-4 pt-2">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Route className="w-4 h-4 text-primary" />
-                            <h4 className="text-sm font-bold text-white">Saved Route</h4>
+                    <div className="w-full shrink-0 min-w-full p-4 pt-2">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Route className="w-4 h-4 text-[#A3FF00]" />
+                            <h4 className="text-xs font-black text-white uppercase tracking-widest">Saved Route</h4>
                         </div>
 
                         {client.routeScreenshot && client.routeScreenshot.startsWith("data:image") ? (

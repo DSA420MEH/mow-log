@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, useRef } from "react";
 import {
     MapPin, Navigation, Home, Route as RouteIcon, ExternalLink,
     Fuel, ArrowLeft, Zap, GripVertical, PauseCircle, Play,
@@ -14,6 +14,18 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-p
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { ClientForm } from "@/components/ClientForm";
+import { calculateLawnArea, type MowingStats } from "@/lib/lawn-intelligence";
+import type { Feature, Polygon } from "geojson";
+
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from "@/components/ui/select";
+import { HudPanel } from "@/components/HudPanel";
+import { usePersistentMapState } from "@/hooks/usePersistentMapState";
 
 const UnifiedGameMap = dynamic(() => import("@/components/UnifiedGameMap"), {
     ssr: false,
@@ -66,22 +78,37 @@ function InlineMowTimer({
 }
 
 
+import type { UnifiedGameMapRef } from "@/components/UnifiedGameMap";
+
 function RoutePlannerContent() {
-    const searchParams = useSearchParams();
     const router = useRouter();
-    const initClientId = searchParams.get("initClient");
+    
+    // ─── Persistence ───
+    const { 
+        lat, 
+        lng, 
+        zoom, 
+        selectedId, 
+        isHydrating, 
+        updateView, 
+        updateSelection 
+    } = usePersistentMapState();
 
     const {
-        clients, homeAddress, homeLat, homeLng, setHomeAddress, fuelCostPerKm,
+        clients, homeAddress, homeLat, homeLng, fuelCostPerKm,
         activeRouteStops, currentRouteStopIndex, startDriveMode, advanceRouteStop, cancelDriveMode,
         startMowSession, endMowSession, toggleMowBreak, toggleMowStuck, sessions, activeMowSessionId,
         activeWorkdaySessionId, startWorkdaySession, endWorkdaySession, toggleWorkdayBreak,
         saveClientRoute, updateClient,
         plannerSelectedClientIds, setPlannerSelectedClientIds,
-        plannerOptimizedRoute, setPlannerOptimizedRoute
+        plannerOptimizedRoute, setPlannerOptimizedRoute,
     } = useStore();
 
-    const [editingClientId, setEditingClientId] = useState<string | null>(null);
+    const mapRef = useRef<UnifiedGameMapRef>(null);
+
+    const editingClientId = selectedId;
+    const setEditingClientId = updateSelection;
+
     const editingClient = editingClientId ? clients.find(c => c.id === editingClientId) : null;
 
     const [editingAddressClientId, setEditingAddressClientId] = useState<string | null>(null);
@@ -89,18 +116,45 @@ function RoutePlannerContent() {
 
     const clientsWithCoords = clients.filter(c => c.lat && c.lng);
 
-    const initClient = useMemo(() =>
-        clients.find(c => c.id === initClientId),
-        [clients, initClientId]
-    );
-
     const selectedClientIds = useMemo(() => new Set(plannerSelectedClientIds), [plannerSelectedClientIds]);
     const optimizedRoute = plannerOptimizedRoute;
 
-    const [homeInput, setHomeInput] = useState(homeAddress || "");
-    const [settingHome, setSettingHome] = useState(false);
+
+    // Command Center States
+    const [drawMode, setDrawMode] = useState<"lawn" | "obstacle">("lawn");
+    const [currentLawnPolygon, setCurrentLawnPolygon] = useState<Feature<Polygon> | null>(null);
+    const [currentObstacles, setCurrentObstacles] = useState<Feature<Polygon>[]>([]);
+    const [lawnAreaSqFt, setLawnAreaSqFt] = useState<number>(0);
+    const [mowingStats, setMowingStats] = useState<MowingStats | null>(null);
 
     const [completedWorkdayId, setCompletedWorkdayId] = useState<string | null>(null);
+    const [showDebriefModal, setShowDebriefModal] = useState(false);
+
+    const debriefStats = useMemo(() => {
+        if (!activeRouteStops || !showDebriefModal) return null;
+        let totalSqFt = 0;
+        let totalEarnings = 0;
+        activeRouteStops.forEach(stop => {
+            const c = clients.find(cl => cl.id === stop.clientId);
+            if (c?.sqft) {
+                const sq = parseFloat(c.sqft);
+                if (!isNaN(sq)) {
+                    totalSqFt += sq;
+                    // Formula estimation matching premium industry rates: $45 min + $0.01 per sqft 
+                    totalEarnings += Math.max(45, (sq * 0.01)); 
+                }
+            }
+        });
+        return { count: activeRouteStops.length, totalSqFt, totalEarnings };
+    }, [activeRouteStops, clients, showDebriefModal]);
+
+    // Fly to home base on initial load
+    useEffect(() => {
+        if (homeLat && homeLng) {
+            mapRef.current?.flyToCoords(homeLat, homeLng, 16);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Derived States
     const isFinished = activeRouteStops && currentRouteStopIndex >= activeRouteStops.length;
@@ -171,34 +225,26 @@ function RoutePlannerContent() {
         setPlannerOptimizedRoute(newRoute);
     };
 
-    const geocodeHome = useCallback(async () => {
-        if (!homeInput.trim()) return;
-        setSettingHome(true);
-        try {
-            let query = homeInput;
-            if (!homeInput.includes(',') && homeAddress && homeAddress.includes(',')) {
-                const cityRegion = homeAddress.substring(homeAddress.indexOf(','));
-                query = homeInput + cityRegion;
-            }
-
-            const res = await fetch(
-                `/api/places/autocomplete?q=${encodeURIComponent(query)}`
-            );
-            const data = await res.json();
-            if (data.length > 0) {
-                setHomeAddress(homeInput, parseFloat(data[0].lat), parseFloat(data[0].lng));
-            }
-        } catch (err) {
-            console.error("Geocoding failed:", err);
-        }
-        setSettingHome(false);
-    }, [homeInput, homeAddress, setHomeAddress]);
 
     return (
         <div className="relative w-full h-full min-h-[100dvh] overflow-hidden bg-black text-foreground font-sans">
             {/* 1. Map Background (Z: 0) */}
             <UnifiedGameMap 
+                ref={mapRef}
                 editingClientId={editingClientId} 
+                drawMode={drawMode}
+                onViewChange={(center, zoom) => updateView(center.lat, center.lng, zoom)}
+                initialView={lat && lng && zoom ? { lat, lng, zoom } : undefined}
+                onDataChange={(lawn, obs) => {
+                    setCurrentLawnPolygon(lawn);
+                    setCurrentObstacles(obs);
+                    if (lawn) {
+                        const area = calculateLawnArea(lawn);
+                        setLawnAreaSqFt(area);
+                    } else {
+                        setLawnAreaSqFt(0);
+                    }
+                }}
                 onSaveBoundaries={(clientId, lawnBoundary, obstacles) => {
                     const client = clients.find(c => c.id === clientId);
                     if (client && client.lat && client.lng) {
@@ -210,6 +256,9 @@ function RoutePlannerContent() {
                     updateClient(clientId, { lat, lng });
                 }}
                 onClientClick={toggleClient}
+                onStatsUpdate={(stats) => {
+                    setMowingStats(stats);
+                }}
             />
 
             {/* 2. HUD Overlays (Z: 50) */}
@@ -261,47 +310,224 @@ function RoutePlannerContent() {
 
 
                 {/* ─── MIDDLE HUD (SIDEBAR) ─── */}
-                <div className="flex-1 w-full px-4 overflow-hidden flex items-stretch pointer-events-none">
+                <div className="flex-1 w-full px-4 overflow-hidden flex items-stretch pointer-events-none relative">
 
-                    {/* PLANNER SIDEBAR (Only show when NOT driving) */}
-                    {!isDrivingActive && !completedWorkdayInfo && !isFinished && (
-                        <div className="w-80 h-full flex flex-col pointer-events-auto premium-glass glass-edge-highlight rounded-2xl shadow-2xl relative animate-in slide-in-from-left-8 duration-500 overflow-hidden">
+                    {/* COMMAND CENTER SIDEBAR (When Editing Client) */}
+                    {editingClient && (
+                        <HudPanel 
+                            title="Command Center" 
+                            subtitle={`EDITING: ${editingClient.name}`}
+                            onClose={() => setEditingClientId(null)}
+                            accentColor="primary"
+                            className="w-80 pointer-events-auto"
+                        >
+                            <div className="space-y-6">
+                                {/* Back to Clients */}
+                                <button
+                                    onClick={() => setEditingClientId(null)}
+                                    className="w-full py-2.5 rounded-lg border border-white/10 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/50 hover:text-white hover:bg-white/5 transition-all"
+                                >
+                                    <ArrowLeft className="w-3 h-3" /> Back to Clients
+                                </button>
 
-                            {/* Decorative Top Accent */}
-                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
-
-                            <div className="p-4 border-b border-white/10 stealth-noir-glass">
-                                <h2 className="text-sm font-black uppercase tracking-widest text-white/80 flex items-center gap-2">
-                                    <RouteIcon className="w-4 h-4 text-primary" /> Route Control
-                                </h2>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
-                                {/* Base Setup */}
-                                <div>
-                                    <label className="text-[10px] uppercase text-muted-foreground tracking-widest font-bold mb-2 flex items-center gap-1">
-                                        <Home className="w-3 h-3" /> Base Location
+                                {/* Address Section */}
+                                <div className="space-y-3">
+                                    <label className="text-[10px] uppercase text-primary/60 tracking-widest font-black flex items-center gap-1.5">
+                                        <MapPin className="w-3 h-3" /> Address
                                     </label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            placeholder="HQ Address..."
-                                            value={homeInput}
-                                            onChange={(e) => setHomeInput(e.target.value)}
-                                            onKeyDown={(e) => e.key === "Enter" && geocodeHome()}
-                                            className="flex-1 px-3 py-2 rounded-lg stealth-noir-glass border border-white/20 text-white text-xs font-mono focus:border-primary focus:outline-none transition-colors"
+                                            readOnly
+                                            suppressHydrationWarning
+                                            value={editingClient.address}
+                                            className="flex-1 px-3 py-2.5 rounded-lg stealth-noir-glass border border-white/10 text-white/60 text-xs font-mono"
                                         />
                                         <button
-                                            onClick={geocodeHome}
-                                            disabled={settingHome}
-                                            className="px-3 py-2 rounded-lg glass-card hover:glass-card-hover border border-primary/30 text-primary hover:bg-primary/20 text-xs font-bold disabled:opacity-50 transition-colors"
+                                            className="px-3 rounded-lg bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-colors text-[10px] font-black uppercase"
+                                            onClick={() => {
+                                                mapRef.current?.flyToClient(editingClient.id);
+                                            }}
                                         >
-                                            {settingHome ? "..." : homeLat ? "Set" : "Set"}
+                                            Fly To
                                         </button>
                                     </div>
-                                    {homeLat && homeLng && (
-                                        <p className="text-[9px] text-primary/70 font-mono mt-1 opacity-70">Loc: {homeLat.toFixed(4)}, {homeLng.toFixed(4)}</p>
+                                    <p className="text-[9px] text-primary/50 flex items-center gap-1">
+                                        <Navigation className="w-2.5 h-2.5 shrink-0" />
+                                        Drag the pin on the map to correct its position
+                                    </p>
+                                </div>
+
+                                {/* Draw Tools Section */}
+                                <div className="space-y-3">
+                                    <label className="text-[10px] uppercase text-primary/60 tracking-widest font-black flex items-center gap-1.5">
+                                        <Pencil className="w-3 h-3" /> Draw Tools
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => setDrawMode("lawn")}
+                                            className={`py-3 rounded-xl border transition-all flex flex-col items-center gap-1.5 ${drawMode === 'lawn'
+                                                ? 'bg-primary/20 border-primary/50 text-primary shadow-[0_0_15px_rgba(204,255,0,0.2)]'
+                                                : 'glass-card border-white/10 text-white/40 hover:text-white'
+                                            }`}
+                                        >
+                                            <span className="text-xs">🌿</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest">Lawn Boundary</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setDrawMode("obstacle")}
+                                            className={`py-3 rounded-xl border transition-all flex flex-col items-center gap-1.5 ${drawMode === 'obstacle'
+                                                ? 'bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                                                : 'glass-card border-white/10 text-white/40 hover:text-white'
+                                            }`}
+                                        >
+                                            <span className="text-xs">⚠️</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest">Obstacle</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Lawn Stats */}
+                                <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-1">Total Lawn Area</div>
+                                    <div className="text-3xl font-mono font-black text-white tracking-tighter">
+                                        {lawnAreaSqFt.toLocaleString()} <span className="text-xs text-white/30 font-sans uppercase ml-1">SQ FT</span>
+                                    </div>
+                                </div>
+
+                                {/* Mower Settings */}
+                                <div className="space-y-4 pt-2">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] uppercase text-primary/60 tracking-widest font-black">Mower Size</label>
+                                        <Select 
+                                            value={editingClient.mowerSize || "54"} 
+                                            onValueChange={(val) => {
+                                                const mowerType = val === "50" ? "zero-turn" : "standard";
+                                                updateClient(editingClient.id, { mowerSize: val, mowerType });
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-full bg-black/40 border-white/10 text-white/80 text-xs h-11 rounded-xl">
+                                                <SelectValue placeholder="Select size" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-[#0a0f0d] border-white/10 text-white">
+                                                <SelectItem value="36">36" Compact</SelectItem>
+                                                <SelectItem value="48">48" Standard</SelectItem>
+                                                <SelectItem value="50">50" Toro TimeCutter (Zero-Turn)</SelectItem>
+                                                <SelectItem value="54">54" Large</SelectItem>
+                                                <SelectItem value="60">60" Commercial</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] uppercase text-primary/60 tracking-widest font-black">Discharge Type</label>
+                                        <Select 
+                                            value={editingClient.mowerDischarge || "Mulch"} 
+                                            onValueChange={(val) => updateClient(editingClient.id, { mowerDischarge: val })}
+                                        >
+                                            <SelectTrigger className="w-full bg-black/40 border-white/10 text-white/80 text-xs h-11 rounded-xl">
+                                                <SelectValue placeholder="Select type" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-[#0a0f0d] border-white/10 text-white">
+                                                <SelectItem value="Side">Side Discharge</SelectItem>
+                                                <SelectItem value="Mulch">Mulching</SelectItem>
+                                                <SelectItem value="Bag">Bagging</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 space-y-3">
+                                    <button
+                                        onClick={() => {
+                                            saveClientRoute(editingClient.id, editingClient.routeScreenshot || '', editingClient.lat!, editingClient.lng!, currentLawnPolygon || undefined, currentObstacles.length > 0 ? currentObstacles : undefined);
+                                            updateClient(editingClient.id, { sqft: lawnAreaSqFt.toString() });
+                                            setEditingClientId(null);
+                                        }}
+                                        className="w-full py-4 rounded-xl bg-primary text-black font-black text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(204,255,0,0.2)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Save className="w-4 h-4" /> Save Address & Boundaries
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            mapRef.current?.generateMowingPattern(editingClient.id);
+                                        }}
+                                        className="w-full py-4 rounded-xl bg-white/5 border border-white/10 text-white/40 font-black text-xs uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Zap className="w-4 h-4" /> Generate Mowing Pattern
+                                    </button>
+
+                                    {mowingStats && (
+                                        <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-500">
+                                            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                                                            <Clock className="w-4 h-4 text-primary" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] text-white/40 uppercase font-black tracking-widest">Est. Duration</p>
+                                                            <p className="text-xl font-black text-primary leading-none">
+                                                                {mowingStats.durationMinutes} <span className="text-xs">MIN</span>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-[10px] text-white/40 uppercase font-black tracking-widest leading-tight">Total Distance</p>
+                                                        <p className="text-sm font-black text-white leading-none">
+                                                            {Math.round(mowingStats.distanceFeet).toLocaleString()} <span className="text-[10px] opacity-50">FT</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="h-px bg-white/5" />
+                                                
+                                                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                                                    <div className="flex items-center gap-1.5 text-white/40">
+                                                        <Navigation className="w-3 h-3" />
+                                                        <span>{mowingStats.passCount} PASSES</span>
+                                                    </div>
+                                                    <div className="text-primary group flex items-center gap-1">
+                                                        <span>ULTRA-EFFICIENT</span>
+                                                        <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     )}
+                                </div>
+                            </div>
+                        </HudPanel>
+                    )}
+
+                    {/* PLANNER SIDEBAR (Only show when NOT driving AND NOT editing client) */}
+                {!isDrivingActive && !completedWorkdayInfo && !isFinished && !editingClient && (
+                        <HudPanel
+                            title="Route Planner"
+                            subtitle={`${clientsWithCoords.length} Clients Managed`}
+                            accentColor="primary"
+                            className="w-80 pointer-events-auto"
+                        >
+                            <div className="space-y-5">
+                                {/* Base Location (read-only — change in Operator Profile) */}
+                                <div>
+                                    <label className="text-[10px] uppercase text-muted-foreground tracking-widest font-bold mb-2 flex items-center gap-1">
+                                        <Home className="w-3 h-3" /> Base Location
+                                    </label>
+                                    {homeAddress && homeLat && homeLng ? (
+                                        <div className="px-3 py-2 rounded-lg stealth-noir-glass border border-primary/20 flex items-center gap-2">
+                                            <span className="flex-1 text-xs font-mono text-white/80 truncate">{homeAddress}</span>
+                                            <span className="text-primary shrink-0">✓</span>
+                                        </div>
+                                    ) : (
+                                        <div className="px-3 py-2 rounded-lg stealth-noir-glass border border-red-500/20 flex items-center gap-2">
+                                            <span className="flex-1 text-xs font-mono text-white/30 italic">No address set</span>
+                                            <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />
+                                        </div>
+                                    )}
+                                    <p className="text-[9px] text-muted-foreground/50 mt-1.5">
+                                        Change this in <span className="text-primary/70">Operator Profile</span>
+                                    </p>
                                 </div>
 
                                 {/* Target Selection */}
@@ -316,7 +542,7 @@ function RoutePlannerContent() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1 custom-scrollbar">
+                                    <div className="space-y-2 pr-1 custom-scrollbar">
                                         {clients.map(client => {
                                             const hasCoords = !!(client.lat && client.lng);
                                             const isSelected = selectedClientIds.has(client.id);
@@ -463,7 +689,7 @@ function RoutePlannerContent() {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </HudPanel>
                     )}
                 </div>
 
@@ -583,7 +809,14 @@ function RoutePlannerContent() {
                                                         <AlertTriangle className="w-5 h-5" />
                                                     </button>
                                                     <button
-                                                        onClick={() => { endMowSession(); advanceRouteStop(); }}
+                                                        onClick={() => { 
+                                                            endMowSession(); 
+                                                            if (activeRouteStops && currentRouteStopIndex === activeRouteStops.length - 1) {
+                                                                setShowDebriefModal(true);
+                                                            } else {
+                                                                advanceRouteStop(); 
+                                                            }
+                                                        }}
                                                         className="py-4 glass-card hover:glass-card-hover border-primary/50 text-primary hover:bg-primary/20 font-black uppercase tracking-widest text-sm rounded-xl hover:scale-[1.02] shadow-[0_0_20px_rgba(204,255,0,0.1)] transition-all flex items-center justify-center gap-2"
                                                     >
                                                         <CheckCircle2 className="w-5 h-5" /> Done
@@ -612,42 +845,54 @@ function RoutePlannerContent() {
                             </div>
                         </div>
                     )}
-                </div>
 
-                {/* ─── CLIENT EDITING OVERLAY ─── */}
-                {editingClient && (
-                    <div className="absolute inset-x-0 top-20 z-30 flex justify-center pointer-events-none px-4 animate-in slide-in-from-top-4 fade-in duration-300">
-                        <div className="pointer-events-auto premium-glass glass-edge-highlight border border-primary/30 rounded-2xl p-5 shadow-[0_0_40px_rgba(204,255,0,0.15)] max-w-md w-full relative overflow-hidden">
-                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent" />
-                            <div className="flex items-start justify-between mb-4">
-                                <div>
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-primary mb-1 flex items-center gap-1.5">
-                                        <Pencil className="w-3 h-3" /> Editing Boundaries
+                    {/* End of Day Debrief Modal */}
+                    {showDebriefModal && debriefStats && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-500 pointer-events-auto px-4">
+                            <div className="w-full max-w-lg p-8 rounded-3xl border border-primary/30 bg-black/50 shadow-[0_0_100px_rgba(204,255,0,0.1)]">
+                                <div className="text-center mb-8">
+                                    <div className="w-20 h-20 rounded-full bg-primary/20 text-primary flex items-center justify-center shadow-[0_0_30px_rgba(204,255,0,0.3)] mx-auto mb-6">
+                                        <CheckCircle2 className="w-10 h-10" />
                                     </div>
-                                    <h3 className="text-xl font-black text-white tracking-tight">{editingClient.name}</h3>
-                                    <p className="text-white/40 text-xs font-mono mt-0.5">{editingClient.address}</p>
+                                    <h2 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">Route Complete</h2>
+                                    <p className="text-white/60 text-sm font-mono">All scheduled targets have been hit.</p>
                                 </div>
+
+                                <div className="space-y-4 mb-8">
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <span className="text-xs font-black uppercase text-white/50 tracking-widest">Clients Mowed</span>
+                                        <span className="text-2xl font-mono font-black text-white">{debriefStats.count}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <span className="text-xs font-black uppercase text-white/50 tracking-widest">Total Area</span>
+                                        <div className="text-right">
+                                            <span className="text-2xl font-mono font-black text-white">{Math.round(debriefStats.totalSqFt).toLocaleString()}</span>
+                                            <span className="text-primary text-[10px] ml-1 uppercase">sq ft</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-primary/10 border border-primary/20">
+                                        <span className="text-xs font-black uppercase text-primary tracking-widest">Est. Earnings</span>
+                                        <span className="text-3xl font-mono font-black text-primary">${Math.round(debriefStats.totalEarnings).toLocaleString()}</span>
+                                    </div>
+                                </div>
+
                                 <button
-                                    onClick={() => setEditingClientId(null)}
-                                    className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-400 text-white/40 flex items-center justify-center transition-all"
+                                    onClick={() => {
+                                        setShowDebriefModal(false);
+                                        advanceRouteStop(); // this sets isFinished
+                                        cancelDriveMode();
+                                        if (!completedWorkdayInfo) {
+                                           endWorkdaySession();
+                                        }
+                                    }}
+                                    className="w-full py-5 rounded-xl bg-primary text-black font-black uppercase tracking-widest text-sm shadow-[0_0_30px_rgba(204,255,0,0.3)] hover:scale-[1.02] transition-all"
                                 >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                            <p className="text-white/50 text-[11px] leading-relaxed mb-4">
-                                Use the <span className="text-primary font-bold">drawing tools</span> on the right side of the map to outline the lawn boundary (green) and mark obstacles (red). Your changes are saved when you click Save.
-                            </p>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setEditingClientId(null)}
-                                    className="flex-1 py-3 rounded-xl glass-card hover:glass-card-hover border border-white/10 text-white/60 font-bold uppercase tracking-widest text-[10px] transition-colors"
-                                >
-                                    Cancel
+                                    Return to HQ
                                 </button>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {/* ─── CLIENT INFO EDITING OVERLAY ─── */}
                 <ClientForm 

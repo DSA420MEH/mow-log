@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, memo } from "react";
 import { useStore } from "@/lib/store";
+import { generateMowingPath, calculateMowingStats } from "@/lib/lawn-intelligence";
 import type { Feature, Polygon } from "geojson";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -40,24 +41,89 @@ const createStopIcon = (index: number) => L.divIcon({
     popupAnchor: [0, -16],
 });
 
+const createClientIcon = (name: string, isSelected: boolean = false) => L.divIcon({
+    className: "custom-leaflet-icon",
+    html: `
+        <div class="relative flex items-center justify-center w-8 h-8">
+            <div class="absolute inset-0 rounded-full ${isSelected ? 'bg-primary/40' : 'bg-white/10'} blur-sm ${isSelected ? 'animate-pulse' : ''}"></div>
+            <div class="w-6 h-6 rounded-full ${isSelected ? 'bg-primary text-black' : 'bg-zinc-800 text-white'} border-2 ${isSelected ? 'border-black/50' : 'border-white/20'} shadow-lg flex items-center justify-center relative z-10 font-bold text-[10px] uppercase">
+                ${name.charAt(0) || '?'}
+            </div>
+        </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
+});
 
-interface NominatimResult {
-    lat: string;
-    lon: string;
-    type?: string;
-    class?: string;
-}
+const getJitteredCoords = (lat: any, lng: any, index: number): [number, number] => {
+    const nLat = Number(lat);
+    const nLng = Number(lng);
+    if (isNaN(nLat) || isNaN(nLng)) return [0, 0];
+    if (index === 0) return [nLat, nLng];
+    const angle = (index * 137.5) * (Math.PI / 180); 
+    const r = 0.00003 * Math.sqrt(index);
+    return [nLat + r * Math.sin(angle), nLng + r * Math.cos(angle)];
+};
+
+// ─── STYLING HELPERS ────────────────────────────
+const BASE_BOUNDARY_STYLE: L.PathOptions = {
+    weight: 3,
+    fillOpacity: 0.15,
+    lineCap: 'round',
+    lineJoin: 'round'
+};
+
+const getBoundaryStyle = (type: 'lawn' | 'obstacle', isSelected: boolean): L.PathOptions => {
+    if (type === 'lawn') {
+        return {
+            ...BASE_BOUNDARY_STYLE,
+            color: isSelected ? "#aaff00" : "#aaff0099",
+            fillColor: "#aaff00",
+            dashArray: isSelected ? undefined : "5, 10"
+        };
+    } else {
+        return {
+            ...BASE_BOUNDARY_STYLE,
+            color: isSelected ? "#ff4444" : "#ff444499",
+            fillColor: "#ff4444",
+            fillOpacity: 0.3,
+            dashArray: isSelected ? undefined : "2, 5"
+        };
+    }
+};
 
 // ─── Props ──────────────────────────────────────
+export interface UnifiedGameMapRef {
+    flyToClient: (clientId: string) => void;
+    flyToCoords: (lat: number, lng: number, zoom?: number) => void;
+    generateMowingPattern: (clientId: string) => void;
+}
+
 interface UnifiedGameMapProps {
     editingClientId?: string | null;
+    drawMode?: "lawn" | "obstacle";
     onSaveBoundaries?: (clientId: string, lawnBoundary: Feature<Polygon> | null, obstacles: Feature<Polygon>[]) => void;
+    onDataChange?: (lawnBoundary: Feature<Polygon> | null, obstacles: Feature<Polygon>[]) => void;
     onPinMoved?: (clientId: string, lat: number, lng: number) => void;
     onClientClick?: (clientId: string) => void;
+    onStatsUpdate?: (stats: any) => void;
+    onViewChange?: (center: { lat: number, lng: number }, zoom: number) => void;
+    initialView?: { lat: number, lng: number, zoom: number };
 }
 
 // ─── Component ──────────────────────────────────
-export default function UnifiedGameMap({ editingClientId = null, onSaveBoundaries, onPinMoved, onClientClick }: UnifiedGameMapProps) {
+const UnifiedGameMap = memo(forwardRef<UnifiedGameMapRef, UnifiedGameMapProps>(({
+    editingClientId = null,
+    drawMode = "lawn",
+    onSaveBoundaries,
+    onDataChange,
+    onPinMoved,
+    onClientClick,
+    onStatsUpdate,
+    onViewChange,
+    initialView
+}, ref) => {
     const mapRef = useRef<L.Map | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -65,34 +131,92 @@ export default function UnifiedGameMap({ editingClientId = null, onSaveBoundarie
     const lawnLayerRef = useRef<L.FeatureGroup | null>(null);
     const obstacleLayerRef = useRef<L.FeatureGroup | null>(null);
     const routeLayerRef = useRef<L.LayerGroup | null>(null);
-    const macroRouteLayerRef = useRef<L.LayerGroup | null>(null); // For daily route path
+    const macroRouteLayerRef = useRef<L.LayerGroup | null>(null);
 
     const drawControlRef = useRef<L.Control.Draw | null>(null);
+    const editingMarkerRef = useRef<L.Marker | null>(null);
+    const allClientMarkersRef = useRef<Map<string, L.Marker>>(new Map());
 
-    // Draw state
-    const [drawMode, setDrawMode] = useState<"lawn" | "obstacle">("lawn");
+    // Internal state for real-time area calculation
     const [lawnPolygon, setLawnPolygon] = useState<Feature<Polygon> | null>(null);
     const [obstacles, setObstacles] = useState<Feature<Polygon>[]>([]);
+    const [mapReady, setMapReady] = useState(false);
 
     const {
         clients,
-        homeLat, homeLng, homeLawnBoundary, homeObstacles,
+        homeLat, homeLng,
         activeRouteStops, currentRouteStopIndex,
         activeMowSessionId
     } = useStore();
 
-    const isClientEditing = !!editingClientId;
-    const editingClient = editingClientId ? clients.find(c => c.id === editingClientId) : null;
+    // Critical: onViewChangeRef to keep event handlers fresh without re-binding
+    const onViewChangeRef = useRef(onViewChange);
+    useEffect(() => {
+        onViewChangeRef.current = onViewChange;
+    }, [onViewChange]);
 
-    // ─── Initialize Map ─────────────────────────
+    // Expose methods to parent
+    useImperativeHandle(ref, () => ({
+        flyToClient: (clientId: string) => {
+            const client = clients.find(c => c.id === clientId);
+            if (client?.lat && client?.lng && mapRef.current) {
+                mapRef.current.flyTo([client.lat, client.lng], 20, { duration: 1.5 });
+            }
+        },
+        flyToCoords: (lat: number, lng: number, zoom = 16) => {
+            if (mapRef.current) {
+                mapRef.current.flyTo([lat, lng], zoom, { duration: 1.5 });
+            }
+        },
+        generateMowingPattern: (clientId: string) => {
+            const client = clients.find(c => c.id === clientId);
+            if (!client?.lawnBoundary || !routeLayerRef.current || !mapRef.current) return;
+
+            routeLayerRef.current.clearLayers();
+            const mowerInches = parseInt(client.mowerSize || "54");
+            const pattern = generateMowingPath(
+                client.lawnBoundary, 
+                client.obstacles || [], 
+                mowerInches,
+                client.mowerType || 'standard'
+            );
+            
+            L.geoJSON(pattern, {
+                style: {
+                    color: "#aaff00",
+                    weight: Math.max(1, mowerInches / 12),
+                    opacity: 0.8,
+                    dashArray: "4, 8"
+                }
+            }).addTo(routeLayerRef.current);
+            
+            const stats = calculateMowingStats(pattern, 3.5);
+            if (onStatsUpdate) onStatsUpdate(stats);
+        }
+    }), [clients, onStatsUpdate]);
+
+    // Notify parent on data change
+    useEffect(() => {
+        if (onDataChange) onDataChange(lawnPolygon, obstacles);
+    }, [lawnPolygon, obstacles, onDataChange]);
+
+    const hasInitializedView = useRef(false);
     useEffect(() => {
         if (!mapContainerRef.current || mapRef.current) return;
 
+        // Determine center
+        const centerCoords: [number, number] = initialView 
+            ? [initialView.lat, initialView.lng] 
+            : (homeLat && homeLng ? [homeLat, homeLng] : (clients.length > 0 && clients[0].lat && clients[0].lng ? [clients[0].lat, clients[0].lng] : [45.4215, -75.6972]));
+        const zoom = initialView?.zoom || 13;
+
         const map = L.map(mapContainerRef.current, {
-            center: homeLat && homeLng ? [homeLat, homeLng] : [46.1, -64.8],
-            zoom: 18,
+            center: centerCoords,
+            zoom: zoom,
             zoomControl: false,
         });
+
+        hasInitializedView.current = true;
 
         L.tileLayer(
             "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -101,382 +225,214 @@ export default function UnifiedGameMap({ editingClientId = null, onSaveBoundarie
 
         L.control.zoom({ position: "bottomright" }).addTo(map);
 
-        const lawnLayer = new L.FeatureGroup().addTo(map);
-        lawnLayerRef.current = lawnLayer;
+        macroRouteLayerRef.current = L.layerGroup().addTo(map);
+        lawnLayerRef.current = new L.FeatureGroup().addTo(map);
+        obstacleLayerRef.current = new L.FeatureGroup().addTo(map);
+        routeLayerRef.current = L.layerGroup().addTo(map);
 
-        const obstacleLayer = new L.FeatureGroup().addTo(map);
-        obstacleLayerRef.current = obstacleLayer;
-
-        const routeLayer = L.layerGroup().addTo(map);
-        routeLayerRef.current = routeLayer;
-
-        const macroRouteLayer = L.layerGroup().addTo(map);
-        macroRouteLayerRef.current = macroRouteLayer;
+        map.on('moveend', () => {
+            if (onViewChangeRef.current) {
+                const center = map.getCenter();
+                onViewChangeRef.current({ lat: center.lat, lng: center.lng }, map.getZoom());
+            }
+        });
 
         mapRef.current = map;
+        setMapReady(true);
 
         return () => {
             map.remove();
             mapRef.current = null;
         };
-    }, [homeLat, homeLng]);
+    }, []); // One-time initialization
 
-    // ─── Update Draw Control When Mode Changes ──
-    // Enables drawing *only* when we are NOT in active drive/mow mode
-    const isEditingMode = isClientEditing || (!activeRouteStops || activeRouteStops.length === 0);
+    // Separate logic for flying to initial view if it changes from outside AND map is ready
+    useEffect(() => {
+        if (mapRef.current && initialView && !hasInitializedView.current) {
+            mapRef.current.setView([initialView.lat, initialView.lng], initialView.zoom);
+            hasInitializedView.current = true;
+        }
+    }, [initialView]);
 
+    // ─── Draw Control logic (Simplified baseline-style) ──────────
     useEffect(() => {
         const map = mapRef.current;
         if (!map) return;
 
-        if (!isEditingMode) {
-            if (drawControlRef.current) map.removeControl(drawControlRef.current);
-            return; // Turn off drawing when navigating
-        }
-
+        const isEditingMode = !!editingClientId || (!activeRouteStops || activeRouteStops.length === 0);
+        
         if (drawControlRef.current) map.removeControl(drawControlRef.current);
-        map.off(L.Draw.Event.CREATED);
-        map.off(L.Draw.Event.DELETED);
+        if (!isEditingMode) return;
 
         const isLawn = drawMode === "lawn";
         const color = isLawn ? "#aaff00" : "#ff4444";
-        const fillColor = isLawn ? "#aaff00" : "#ff4444";
         const editGroup = isLawn ? lawnLayerRef.current! : obstacleLayerRef.current!;
 
         const drawControl = new L.Control.Draw({
             position: "topright",
             draw: {
-                polygon: {
-                    allowIntersection: false,
-                    shapeOptions: { color, weight: 2, fillOpacity: isLawn ? 0.05 : 0.3, fillColor },
-                },
-                rectangle: {
-                    shapeOptions: { color, weight: 2, fillOpacity: isLawn ? 0.05 : 0.3, fillColor },
-                },
-                polyline: false, circle: false, circlemarker: false, marker: false,
+                polygon: { shapeOptions: { color, weight: 2, fillOpacity: isLawn ? 0.05 : 0.3 } },
+                rectangle: { shapeOptions: { color, weight: 2, fillOpacity: isLawn ? 0.05 : 0.3 } },
+                marker: false, circle: false, circlemarker: false, polyline: false,
             },
-            edit: {
-                featureGroup: editGroup,
-                remove: true,
-            },
-        } as L.Control.DrawConstructorOptions);
+            edit: { featureGroup: editGroup, remove: true }
+        } as any);
 
         map.addControl(drawControl);
         drawControlRef.current = drawControl;
 
-        // Force redraw to ensure controls appear immediately
-        setTimeout(() => map.invalidateSize(), 150);
-
-        // Handle polygon creation
-        map.on(L.Draw.Event.CREATED, (e: L.LeafletEvent) => {
-            const event = e as L.DrawEvents.Created;
-            const layer = event.layer;
-
+        const handleCreated = (e: any) => {
+            const layer = e.layer;
             if (isLawn) {
                 lawnLayerRef.current!.clearLayers();
-                routeLayerRef.current!.clearLayers();
                 lawnLayerRef.current!.addLayer(layer);
-                const geojson = (layer as L.Polygon).toGeoJSON();
-                if (geojson.geometry.type === "Polygon") {
-                    setLawnPolygon(geojson as Feature<Polygon>);
-                }
+                setLawnPolygon(layer.toGeoJSON());
             } else {
                 obstacleLayerRef.current!.addLayer(layer);
-                const geojson = (layer as L.Polygon).toGeoJSON();
-                if (geojson.geometry.type === "Polygon") {
-                    setObstacles(prev => [...prev, geojson as Feature<Polygon>]);
-                }
+                setObstacles(prev => [...prev, layer.toGeoJSON()]);
             }
-        });
+        };
 
-        // Handle polygon editing
-        map.on(L.Draw.Event.EDITED, () => {
-            if (isLawn) {
-                lawnLayerRef.current!.eachLayer((layer: any) => {
-                    const geojson = layer.toGeoJSON();
-                    if (geojson.geometry.type === "Polygon") {
-                        setLawnPolygon(geojson as Feature<Polygon>);
-                    }
-                });
-            } else {
-                const updated: Feature<Polygon>[] = [];
-                obstacleLayerRef.current!.eachLayer((layer: any) => {
-                    const geojson = layer.toGeoJSON();
-                    if (geojson.geometry.type === "Polygon") {
-                        updated.push(geojson as Feature<Polygon>);
-                    }
-                });
-                setObstacles(updated);
-            }
-        });
-
-        // Handle deletion
-        map.on(L.Draw.Event.DELETED, () => {
+        const handleDeleted = () => {
             if (isLawn) {
                 setLawnPolygon(null);
-                routeLayerRef.current!.clearLayers();
             } else {
-                const remaining: Feature<Polygon>[] = [];
-                obstacleLayerRef.current!.eachLayer((layer) => {
-                    const geojson = (layer as L.Polygon).toGeoJSON();
-                    if (geojson.geometry.type === "Polygon") remaining.push(geojson as Feature<Polygon>);
-                });
-                setObstacles(remaining);
+                const obsArray: Feature<Polygon>[] = [];
+                obstacleLayerRef.current!.eachLayer((l: any) => obsArray.push(l.toGeoJSON()));
+                setObstacles(obsArray);
             }
+        };
+
+        const handleEdited = () => {
+            if (isLawn) {
+                lawnLayerRef.current!.eachLayer((l: any) => setLawnPolygon(l.toGeoJSON()));
+            } else {
+                const obsArray: Feature<Polygon>[] = [];
+                obstacleLayerRef.current!.eachLayer((l: any) => obsArray.push(l.toGeoJSON()));
+                setObstacles(obsArray);
+            }
+        };
+
+        map.on(L.Draw.Event.CREATED, handleCreated);
+        map.on(L.Draw.Event.EDITED, handleEdited);
+        map.on(L.Draw.Event.DELETED, handleDeleted);
+
+        return () => {
+            map.off(L.Draw.Event.CREATED, handleCreated);
+            map.off(L.Draw.Event.EDITED, handleEdited);
+            map.off(L.Draw.Event.DELETED, handleDeleted);
+        };
+    }, [drawMode, editingClientId, activeRouteStops]);
+
+    // ─── Scenario Logic (Optimized for flicker) ───────────
+    const lastStateRef = useRef<string>("");
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !mapReady) return;
+
+        // Create a signature of the current state to avoid redundant updates
+        const currentStateSignature = JSON.stringify({
+            editingClientId,
+            activeMowSessionId,
+            currentStopId: activeRouteStops?.[currentRouteStopIndex]?.clientId,
+            clientCount: clients.length,
+            home: `${homeLat},${homeLng}`
         });
-    }, [drawMode, isEditingMode]);
 
-    // ─── SCENARIO 0: Client Editing Mode ─────────────────────────────────
-    const lastInitializedClientIdRef = useRef<string | null>(null);
+        if (lastStateRef.current === currentStateSignature) return;
+        lastStateRef.current = currentStateSignature;
 
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !isClientEditing || !editingClient || !editingClientId) {
-            lastInitializedClientIdRef.current = null;
-            return;
-        }
-
-        // 1. PIN & VIEW INITIALIZATION (Only run once per client ID)
-        if (lastInitializedClientIdRef.current !== editingClientId) {
-            lastInitializedClientIdRef.current = editingClientId;
-            map.invalidateSize();
-
-            // Clear everything for a fresh start on this client
-            lawnLayerRef.current?.clearLayers();
-            obstacleLayerRef.current?.clearLayers();
-            macroRouteLayerRef.current?.clearLayers();
-            routeLayerRef.current?.clearLayers();
-
-            if (editingClient.lat && editingClient.lng) {
-                map.flyTo([editingClient.lat, editingClient.lng], 20, { duration: 1.2, animate: true });
-
-                const clientIcon = L.divIcon({
-                    className: "custom-leaflet-icon",
-                    html: `
-                        <div class="relative flex items-center justify-center w-10 h-10" style="cursor:grab">
-                            <div class="absolute inset-0 rounded-full bg-cyan-500/30 animate-ping"></div>
-                            <div class="w-8 h-8 rounded-full bg-cyan-500 border-3 border-white shadow-lg flex items-center justify-center relative z-10 text-white shadow-black/50" style="border-width:3px">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
-                            </div>
-                        </div>
-                    `,
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20],
-                });
-                const marker = L.marker([editingClient.lat, editingClient.lng], { icon: clientIcon, draggable: true }).addTo(macroRouteLayerRef.current!);
-
-                marker.on('dragend', () => {
-                    const pos = marker.getLatLng();
-                    if (onPinMoved && editingClientId) {
-                        onPinMoved(editingClientId, pos.lat, pos.lng);
-                    }
-                });
-
-                marker.bindTooltip('Drag to reposition', { direction: 'top', offset: [0, -20], className: 'leaflet-tooltip-dark' });
-            }
-        }
-
-        // 2. BOUNDARY SYNC (Run whenever boundary/obstacles in store change)
-        // This ensures that if we save and come back, or if the store updates, the map reflects it
-        // We only do this if the layers are currently empty (first load) or we want to force sync
-        if (lawnLayerRef.current?.getLayers().length === 0 && editingClient.lawnBoundary) {
-            L.geoJSON(editingClient.lawnBoundary, {
-                style: { color: "#aaff00", weight: 2, fillOpacity: 0.1, fillColor: "#aaff00" }
-            }).eachLayer(layer => {
-                lawnLayerRef.current!.addLayer(layer);
-            });
-            setLawnPolygon(editingClient.lawnBoundary);
-        }
-
-        if (obstacleLayerRef.current?.getLayers().length === 0 && editingClient.obstacles && editingClient.obstacles.length > 0) {
-            editingClient.obstacles.forEach(obs => {
-                L.geoJSON(obs, {
-                    style: { color: "#ff4444", weight: 2, fillOpacity: 0.3, fillColor: "#ff4444" }
-                }).eachLayer(layer => {
-                    obstacleLayerRef.current!.addLayer(layer);
-                });
-            });
-            setObstacles(editingClient.obstacles);
-        }
-
-    }, [editingClientId, isClientEditing, onPinMoved, editingClient?.lawnBoundary, editingClient?.obstacles]);
-
-    // ─── Cinematic Camera Transitions ─────────────────────────────────
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || isClientEditing) return;  // Skip when editing a client (handled by SCENARIO 0)
-
+        // Reset layers
         lawnLayerRef.current?.clearLayers();
         obstacleLayerRef.current?.clearLayers();
         macroRouteLayerRef.current?.clearLayers();
         routeLayerRef.current?.clearLayers();
 
-        // SCENARIO 1: We are actively mowing a specific property (Micro view)
-        if (activeMowSessionId && activeRouteStops && currentRouteStopIndex < activeRouteStops.length) {
-            const currentStop = activeRouteStops[currentRouteStopIndex];
-            const client = clients.find(c => c.id === currentStop.clientId);
-
+        // 1. Client Editing Mode
+        if (editingClientId) {
+            const client = clients.find(c => c.id === editingClientId);
             if (client && client.lat && client.lng) {
-                // Fly in directly to the property
-                map.flyTo([client.lat, client.lng], 20, { duration: 1.5, animate: true });
+                // Initialize internal state for real-time area calculation
+                if (client.lawnBoundary && !lawnPolygon) setLawnPolygon(client.lawnBoundary);
+                if (client.obstacles && obstacles.length === 0) setObstacles(client.obstacles);
 
-                // Redraw their stored GeoJSON geometries beautifully onto the map
-                if (client.lawnBoundary) {
-                    L.geoJSON(client.lawnBoundary, {
-                        style: { color: "#aaff00", weight: 2, fillOpacity: 0.1, fillColor: "#aaff00" }
-                    }).addTo(lawnLayerRef.current!);
-                }
-
-                if (client.obstacles && client.obstacles.length > 0) {
-                    client.obstacles.forEach(obs => {
-                        L.geoJSON(obs, {
-                            style: { color: "#ff4444", weight: 2, fillOpacity: 0.3, fillColor: "#ff4444" }
-                        }).addTo(obstacleLayerRef.current!);
-                    });
-                }
+                // Marker
+                if (editingMarkerRef.current) editingMarkerRef.current.remove();
+                editingMarkerRef.current = L.marker([client.lat, client.lng], { 
+                    draggable: true,
+                    icon: createClientIcon(client.name, true)
+                })
+                    .bindTooltip(client.name, { permanent: false, direction: 'top', offset: [0, -10] })
+                    .on('dragend', (e) => onPinMoved?.(client.id, e.target.getLatLng().lat, e.target.getLatLng().lng))
+    .addTo(macroRouteLayerRef.current!);
+                
+                // Boundaries
+                if (client.lawnBoundary) L.geoJSON(client.lawnBoundary, { style: getBoundaryStyle('lawn', true) }).addTo(lawnLayerRef.current!);
+                client.obstacles?.forEach(o => L.geoJSON(o, { style: getBoundaryStyle('obstacle', true) }).addTo(obstacleLayerRef.current!));
+            }
+        } 
+        // 2. Mowing Mode
+        else if (activeMowSessionId && activeRouteStops) {
+            const stop = activeRouteStops[currentRouteStopIndex];
+            const client = clients.find(c => c.id === stop?.clientId);
+            if (client) {
+                if (client.lawnBoundary) L.geoJSON(client.lawnBoundary, { style: getBoundaryStyle('lawn', true) }).addTo(lawnLayerRef.current!);
+                client.obstacles?.forEach(o => L.geoJSON(o, { style: getBoundaryStyle('obstacle', true) }).addTo(obstacleLayerRef.current!));
             }
         }
-        // SCENARIO 2: We are in Drive Mode navigating between stops (Macro view)
-        else if (activeRouteStops && activeRouteStops.length > 0 && homeLat && homeLng) {
-            const allCoords: [number, number][] = [
-                [homeLat, homeLng],
-                ...activeRouteStops.map(s => [s.lat, s.lng] as [number, number]),
-                [homeLat, homeLng]
-            ];
+        // 3. Drive Mode (Daily Route)
+        else if (activeRouteStops?.length) {
+            // Trim to remaining route stops based on currentRouteStopIndex
+            const remainingStops = activeRouteStops.slice(currentRouteStopIndex);
+            
+            // Draw remaining route polyline
+            const coords: [number, number][] = remainingStops.map(s => [s.lat, s.lng]);
+            if (currentRouteStopIndex === 0 && homeLat && homeLng) {
+                coords.unshift([homeLat, homeLng]);
+                L.marker([homeLat, homeLng], { icon: homeIcon }).addTo(macroRouteLayerRef.current!);
+            } else if (currentRouteStopIndex > 0) {
+                const prevStop = activeRouteStops[currentRouteStopIndex - 1];
+                if (prevStop) {
+                    coords.unshift([prevStop.lat, prevStop.lng]);
+                }
+            }
+            L.polyline(coords, { color: '#c3ff00', dashArray: '8, 8', weight: 4, opacity: 0.8 }).addTo(macroRouteLayerRef.current!);
+            
+            // Render remaining markers
+            remainingStops.forEach((s, i) => L.marker([s.lat, s.lng], { icon: createStopIcon(currentRouteStopIndex + i + 1) }).addTo(macroRouteLayerRef.current!));
 
-            const bounds = L.latLngBounds(allCoords);
-            map.flyToBounds(bounds, { padding: [100, 100], duration: 1.5, animate: true });
-
-            L.polyline(allCoords, {
-                color: 'hsl(var(--primary))',
-                weight: 4,
-                opacity: 0.8,
-                lineCap: 'round',
-                dashArray: '8, 8'
-            }).addTo(macroRouteLayerRef.current!);
-
-            L.marker([homeLat, homeLng], { icon: homeIcon }).addTo(macroRouteLayerRef.current!);
-
-            activeRouteStops.forEach((stop, idx) => {
-                L.marker([stop.lat, stop.lng], { icon: createStopIcon(idx + 1) }).addTo(macroRouteLayerRef.current!);
+            // Render remaining boundaries underneath
+            remainingStops.forEach(stop => {
+                const c = clients.find(client => client.id === stop.clientId);
+                if (c && c.lawnBoundary) {
+                    L.geoJSON(c.lawnBoundary, { style: getBoundaryStyle('lawn', false) }).addTo(lawnLayerRef.current!);
+                }
             });
         }
-        // SCENARIO 3: Editing Mode / Route Planner Setup
-        else if ((!activeRouteStops || activeRouteStops.length === 0) && homeLat && homeLng) {
-
-            // Gather all points: home + any clients with coords
-            const boundsCoords: [number, number][] = [[homeLat, homeLng]];
-
-            L.marker([homeLat, homeLng], { icon: homeIcon }).addTo(macroRouteLayerRef.current!);
-
-            if (homeLawnBoundary) {
-                L.geoJSON(homeLawnBoundary, {
-                    style: { color: "#aaff00", weight: 2, fillOpacity: 0.1, fillColor: "#aaff00" }
-                }).addTo(lawnLayerRef.current!);
+        // 4. Overview
+        else {
+            if (homeLat && homeLng) {
+                L.marker([homeLat, homeLng], { icon: homeIcon })
+                    .bindTooltip("Home", { direction: 'top', offset: [0, -10] })
+                    .addTo(macroRouteLayerRef.current!);
             }
-
-            if (homeObstacles && homeObstacles.length > 0) {
-                homeObstacles.forEach(obs => {
-                    L.geoJSON(obs, {
-                        style: { color: "#ff4444", weight: 2, fillOpacity: 0.3, fillColor: "#ff4444" }
-                    }).addTo(obstacleLayerRef.current!);
-                });
-            }
-
-            clients.forEach(c => {
+            
+            clients.forEach((c, i) => {
                 if (c.lat && c.lng) {
-                    boundsCoords.push([c.lat, c.lng]);
-
-                    const clientIcon = L.divIcon({
-                        className: "custom-leaflet-icon",
-                        html: `
-                            <div class="relative flex items-center justify-center w-6 h-6 hover:scale-125 transition-transform cursor-pointer">
-                                <div class="absolute inset-0 rounded-full bg-cyan-500/30 animate-pulse"></div>
-                                <div class="w-4 h-4 rounded-full bg-cyan-500 border-2 border-black shadow-lg shadow-black"></div>
-                            </div>
-                        `,
-                        iconSize: [24, 24],
-                        iconAnchor: [12, 12],
-                        popupAnchor: [0, -12],
-                    });
-
-                    L.marker([c.lat, c.lng], { icon: clientIcon })
-                        .bindPopup(`<strong class="text-black font-mono uppercase tracking-wider">${c.name}</strong>`)
-                        .on('click', () => {
-                            if (onClientClick) onClientClick(c.id);
-                        })
+                    const coords = getJitteredCoords(c.lat, c.lng, i);
+                    L.marker(coords, { icon: createClientIcon(c.name) })
+                        .bindTooltip(c.name, { direction: 'top', offset: [0, -10] })
+                        .on('click', () => onClientClick?.(c.id))
                         .addTo(macroRouteLayerRef.current!);
-
-                    // Render the saved lawn boundaries on the map!
-                    if (c.lawnBoundary) {
-                        L.geoJSON(c.lawnBoundary as any, {
-                            style: { color: "#aaff00", weight: 2, fillOpacity: 0.1, fillColor: "#aaff00" }
-                        }).addTo(lawnLayerRef.current!);
-                    }
-
-                    // Render any saved obstacles
-                    if (c.obstacles && c.obstacles.length > 0) {
-                        c.obstacles.forEach(obs => {
-                            L.geoJSON(obs as any, {
-                                style: { color: "#ff4444", weight: 2, fillOpacity: 0.3, fillColor: "#ff4444" }
-                            }).addTo(obstacleLayerRef.current!);
-                        });
-                    }
                 }
             });
-
-            if (boundsCoords.length > 1) {
-                const bounds = L.latLngBounds(boundsCoords);
-                map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5, animate: true });
-            } else {
-                map.flyTo([homeLat, homeLng], 18, { duration: 1.5, animate: true });
-            }
         }
-    }, [activeRouteStops, currentRouteStopIndex, activeMowSessionId, clients, homeLat, homeLng, homeLawnBoundary, homeObstacles]);
+    }, [mapReady, editingClientId, activeMowSessionId, activeRouteStops, clients, homeLat, homeLng]);
 
     return (
-        <>
-            <div ref={mapContainerRef} className="absolute inset-0 w-full h-full bg-[#0a0f0d] z-0" />
-
-            {/* Editing Mode Controls Overlay */}
-            {isClientEditing && editingClient && (
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[2000] flex items-center gap-3 animate-in slide-in-from-bottom-4 fade-in duration-300">
-                    {/* Draw Mode Toggle */}
-                    <div className="premium-glass glass-edge-highlight rounded-2xl p-1.5 flex gap-1 shadow-2xl">
-                        <button
-                            onClick={() => setDrawMode("lawn")}
-                            className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${drawMode === 'lawn'
-                                ? 'bg-primary/20 text-primary border border-primary/30 shadow-[0_0_15px_rgba(204,255,0,0.2)]'
-                                : 'text-white/50 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            🌿 Lawn
-                        </button>
-                        <button
-                            onClick={() => setDrawMode("obstacle")}
-                            className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${drawMode === 'obstacle'
-                                ? 'bg-red-500/20 text-red-400 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
-                                : 'text-white/50 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            ⚠️ Obstacle
-                        </button>
-                    </div>
-
-                    {/* Save Button */}
-                    <button
-                        onClick={() => {
-                            if (onSaveBoundaries && editingClientId) {
-                                onSaveBoundaries(editingClientId, lawnPolygon, obstacles);
-                            }
-                        }}
-                        className="px-6 py-3 rounded-xl bg-primary text-black font-black text-xs uppercase tracking-widest shadow-[0_0_30px_rgba(204,255,0,0.3)] hover:scale-105 transition-all flex items-center gap-2"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
-                        Save
-                    </button>
-                </div>
-            )}
-        </>
+        <div ref={mapContainerRef} className="absolute inset-0 w-full h-full bg-[#0a0f0d] z-0" />
     );
-}
+}));
+
+UnifiedGameMap.displayName = "UnifiedGameMap";
+export default UnifiedGameMap;

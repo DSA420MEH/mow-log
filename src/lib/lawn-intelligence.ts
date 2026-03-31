@@ -11,6 +11,144 @@
  */
 
 import type { HourlyForecast, DailyForecast, WeatherData } from './weather-api';
+import * as turf from '@turf/turf';
+import type { Feature, LineString, Polygon, MultiPolygon, FeatureCollection } from 'geojson';
+
+// ── 0. Mower Profile & Operational Stats ─────────────────────────────────────
+
+export interface MowerProfile {
+    /** Fuel consumption when actively mowing at normal load (L/h) */
+    fuelConsumptionRateLh: number;
+    /** Fuel consumption when in transit / light load between properties (L/h) */
+    transitFuelConsumptionRateLh: number;
+    /** Ground speed when transiting between properties under own power (mph) */
+    transitSpeedMph: number;
+    /** Blade sharpening interval in engine hours */
+    bladeSharpenIntervalHours: number;
+}
+
+/** Grass/load condition that affects fuel consumption */
+export type GrassLoadCondition = 'light' | 'normal' | 'heavy';
+
+/** Fuel multipliers relative to the profile's normal-load rate */
+const LOAD_FUEL_MULTIPLIER: Record<GrassLoadCondition, number> = {
+    light: 0.70,  // Short/thin grass, minimal resistance
+    normal: 1.00, // Standard mowing conditions
+    heavy: 1.35,  // Tall, thick, or wet grass — engine works harder
+};
+
+export interface MowingStats {
+    distanceFeet: number;
+    durationMinutes: number;
+    passCount: number;
+    /** Estimated fuel consumed (liters) — only set when mowerProfile is supplied */
+    fuelLiters?: number;
+    /** Estimated fuel consumed (US gallons) — only set when mowerProfile is supplied */
+    fuelGallons?: number;
+}
+
+// ── Transit Cost Calculator ───────────────────────────────────────────────────
+
+export interface TransitStats {
+    distanceMiles: number;
+    /** Estimated drive time at transit speed (minutes) */
+    durationMinutes: number;
+    /** Estimated fuel used driving house-to-house (liters) */
+    fuelLiters: number;
+    /** Estimated fuel used driving house-to-house (US gallons) */
+    fuelGallons: number;
+}
+
+/**
+ * Estimates fuel cost for driving a mower between properties.
+ * Uses the mower's light-load transit fuel rate and transit speed.
+ *
+ * @param distanceMiles - Road distance between two stops (miles)
+ * @param mowerProfile  - Active mower's operational profile
+ */
+export function calculateTransitStats(
+    distanceMiles: number,
+    mowerProfile: MowerProfile,
+): TransitStats {
+    const durationHours = distanceMiles / (mowerProfile.transitSpeedMph || 1);
+    const fuelLiters = durationHours * mowerProfile.transitFuelConsumptionRateLh;
+    return {
+        distanceMiles,
+        durationMinutes: Math.round(durationHours * 60),
+        fuelLiters: Math.round(fuelLiters * 100) / 100,
+        fuelGallons: Math.round((fuelLiters / 3.785) * 1000) / 1000,
+    };
+}
+
+// ── Blade Wear Tracker ────────────────────────────────────────────────────────
+
+export interface BladeWearStatus {
+    /** Engine hours elapsed since last sharpening */
+    hoursSinceSharpening: number;
+    /** Engine hours remaining before next sharpening is due (0 if overdue) */
+    hoursUntilDue: number;
+    /** True when interval has been reached */
+    isDue: boolean;
+    /** True when interval has been exceeded */
+    isOverdue: boolean;
+    /** Wear percentage 0-120+ (>100 = overdue) */
+    percentWorn: number;
+    /** Human-readable status message */
+    message: string;
+}
+
+/**
+ * Determines blade sharpening status for a mower.
+ *
+ * @param currentHours       - Total engine hours on the mower
+ * @param lastSharpenHours   - Engine hours at the last sharpening
+ * @param sharpenIntervalHours - Sharpening interval (typically 25h)
+ */
+export function getBladeWearStatus(
+    currentHours: number,
+    lastSharpenHours: number,
+    sharpenIntervalHours: number,
+): BladeWearStatus {
+    const hoursSinceSharpening = currentHours - lastSharpenHours;
+    const hoursUntilDue = Math.max(0, sharpenIntervalHours - hoursSinceSharpening);
+    const isDue = hoursSinceSharpening >= sharpenIntervalHours;
+    const isOverdue = hoursSinceSharpening > sharpenIntervalHours;
+    const percentWorn = Math.min(120, (hoursSinceSharpening / (sharpenIntervalHours || 1)) * 100);
+
+    let message: string;
+    if (isOverdue) {
+        const overdueBy = (hoursSinceSharpening - sharpenIntervalHours).toFixed(1);
+        message = `Blades overdue — sharpen now (${overdueBy}h past interval)`;
+    } else if (isDue) {
+        message = `Blades due for sharpening`;
+    } else if (hoursUntilDue <= 5) {
+        message = `Sharpen soon — ${hoursUntilDue.toFixed(1)}h remaining`;
+    } else {
+        message = `Blades OK — ${hoursUntilDue.toFixed(1)}h until next sharpening`;
+    }
+
+    return { hoursSinceSharpening, hoursUntilDue, isDue, isOverdue, percentWorn, message };
+}
+
+/**
+ * Calculates the area of a lawn polygon in square feet.
+ * @param polygon - GeoJSON Polygon or Feature<Polygon>
+ * @returns Area in square feet
+ */
+export function calculateLawnArea(polygon: any): number {
+    if (!polygon) return 0;
+    
+    try {
+        // turf.area returns area in square meters
+        const areaSqMeters = turf.area(polygon);
+        // 1 sq meter = 10.7639 sq feet
+        return Math.round(areaSqMeters * 10.7639);
+    } catch (error) {
+        console.error('Error calculating lawn area:', error);
+        return 0;
+    }
+}
+
 
 // ── 1. Mow Safety Assessment ──────────────────────────────────────────────────
 
@@ -490,5 +628,224 @@ export function computeSoilWetness(
         weightedRainMm,
         summary,
         tooWetToMow,
+    };
+}
+// ── 6. Mowing Pattern Generation ───────────────────────────────────────────
+
+/**
+ * Calculates a length-weighted average bearing of all edges in a polygon.
+ * This helps determine the "dominant" direction for the mowing pattern.
+ */
+function getDominantDirection(polygon: any): number {
+    const edges: { bearing: number; length: number }[] = [];
+    const coords = turf.getCoords(polygon)[0]; // Outer ring
+
+    for (let i = 0; i < coords.length - 1; i++) {
+        const p1 = turf.point(coords[i]);
+        const p2 = turf.point(coords[i + 1]);
+        const bearing = turf.rhumbBearing(p1, p2);
+        const length = turf.distance(p1, p2);
+        
+        // Normalize bearing to [0, 180) since a path and its reverse are same orientation
+        let normBearing = bearing % 180;
+        if (normBearing < 0) normBearing += 180;
+        
+        edges.push({ bearing: normBearing, length });
+    }
+
+    // Weight bearings by length (using vector averaging to handle circularity)
+    let sumX = 0;
+    let sumY = 0;
+    for (const edge of edges) {
+        const rad = (edge.bearing * Math.PI) / 180;
+        // Double the angle to handle the 180-degree symmetry
+        sumX += Math.cos(2 * rad) * edge.length;
+        sumY += Math.sin(2 * rad) * edge.length;
+    }
+
+    const avgRad = Math.atan2(sumY, sumX) / 2;
+    let avgBearing = (avgRad * 180) / Math.PI;
+    if (avgBearing < 0) avgBearing += 180;
+
+    return avgBearing;
+}
+
+/**
+ * Generates an optimized mowing pattern (LineStrings) for a given lawn and obstacles.
+ * Correctly handles orientation, buffering, and obstacle avoidance.
+ */
+export function generateMowingPath(
+    boundary: any,
+    obstacles: any[] = [],
+    mowerWidthInches: number = 54,
+    mowerType: 'standard' | 'zero-turn' = 'standard'
+): any {
+    if (!boundary) return turf.featureCollection([]);
+
+    try {
+        const mowerWidthMeters = mowerWidthInches * 0.0254;
+        const deckWidth = mowerWidthMeters;
+        const isZeroTurn = mowerType === 'zero-turn';
+        const perimeterPasses = isZeroTurn ? 2 : 0;
+
+        const pathSegments: Feature<LineString>[] = [];
+
+        // 1. Generate Perimeter Passes
+        // These are concentric insets following the lawn boundary
+        let currentBoundary = boundary;
+        for (let i = 0; i < perimeterPasses; i++) {
+            const insetDistance = -(deckWidth/2 + i * deckWidth);
+            const inset = turf.buffer(boundary, insetDistance, { units: 'meters' });
+            
+            if (inset) {
+                // Flatten to handle MultiPolygon and extract rings safely
+                const flat = turf.flatten(inset);
+                flat.features.forEach(f => {
+                    const poly = f.geometry as Polygon;
+                    poly.coordinates.forEach(ring => {
+                        if (ring.length >= 2) {
+                            pathSegments.push(turf.lineString(ring));
+                        }
+                    });
+                });
+            }
+        }
+
+        // 2. Prepare Work Area for Fill Pattern
+        // The fill pattern starts after the perimeter passes
+        const fillInsetDistance = -(deckWidth/2 + perimeterPasses * deckWidth);
+        let workArea = turf.buffer(boundary, fillInsetDistance, { units: 'meters' });
+        
+        if (!workArea) return turf.featureCollection(pathSegments);
+
+        // Clip out obstacles (buffered by half a deck width to avoid collisions)
+        if (obstacles.length > 0) {
+            const obstacleCollection = turf.featureCollection(
+                obstacles.map(o => turf.buffer(o, deckWidth/2, { units: 'meters' })).filter(Boolean) as Feature<Polygon | MultiPolygon>[]
+            ) as FeatureCollection<Polygon | MultiPolygon>;
+            if (obstacleCollection.features.length > 0) {
+                const combinedObstacles = turf.union(obstacleCollection);
+                if (combinedObstacles) {
+                    const diff = turf.difference(turf.featureCollection([workArea, combinedObstacles]));
+                    if (diff) workArea = diff;
+                }
+            }
+        }
+
+        // 3. Generate Fill Pattern (Sweep Lines)
+        const dominantBearing = getDominantDirection(boundary);
+        const pivot = turf.center(boundary);
+        const rotatedArea = turf.transformRotate(workArea as Feature<Polygon | MultiPolygon>, -dominantBearing, { pivot });
+        const bbox = turf.bbox(rotatedArea);
+        const [minX, minY, maxX, maxY] = bbox;
+
+        // Skip if bbox is invalid (e.g. area is too small after insets/clipping)
+        if (minX === Infinity || minY === Infinity || maxX === -Infinity || maxY === -Infinity) {
+            return turf.featureCollection(pathSegments);
+        }
+
+        // Space lines by full deck width
+        const spacingMeters = deckWidth;
+        // Approximation for bbox iteration (Turf bbox is in degrees)
+        const latRef = (minY + maxY) / 2;
+        const metersPerDegreeLat = 111320;
+        const latSpacing = spacingMeters / metersPerDegreeLat;
+
+        let currentY = minY + (latSpacing / 2);
+        let passCount = 0;
+
+        while (currentY < maxY) {
+            const flatLine = turf.lineString([
+                [minX - 0.1, currentY],
+                [maxX + 0.1, currentY]
+            ]);
+
+            const lineParts = turf.lineSplit(flatLine, rotatedArea);
+            if (lineParts.features.length > 0) {
+                const segmentsInRow: Feature<LineString>[] = [];
+                
+                lineParts.features.forEach((segment: any) => {
+                    const coords = segment.geometry.coordinates;
+                    if (coords && coords.length >= 2) {
+                        const mid = turf.midpoint(coords[0], coords[1]);
+                        if (turf.booleanPointInPolygon(mid, rotatedArea as any)) {
+                            segmentsInRow.push(segment);
+                        }
+                    }
+                });
+
+                // Snake logic: flip direction of every other pass
+                const shouldFlip = passCount % 2 === 1;
+                
+                segmentsInRow.forEach(segment => {
+                    let coords = segment.geometry.coordinates;
+                    if (shouldFlip) coords = [...coords].reverse();
+                    
+                    const finalSegment = turf.transformRotate(
+                        turf.lineString(coords), 
+                        dominantBearing, 
+                        { pivot }
+                    );
+                    pathSegments.push(finalSegment);
+                });
+                
+                if (segmentsInRow.length > 0) passCount++;
+            }
+            currentY += latSpacing;
+        }
+
+        return turf.featureCollection(pathSegments);
+
+    } catch (error) {
+        console.error('Error generating mowing path:', error);
+        return turf.featureCollection([]);
+    }
+}
+
+/**
+ * Calculates efficiency metrics for a given mowing path.
+ *
+ * @param path         - FeatureCollection of LineStrings from generateMowingPath
+ * @param speedMph     - Mower ground speed while cutting (mph)
+ * @param mowerProfile - Optional profile for fuel estimation
+ * @param grassLoad    - Grass/load condition affecting fuel burn
+ */
+export function calculateMowingStats(
+    path: FeatureCollection<LineString>,
+    speedMph: number = 5,
+    mowerProfile?: MowerProfile,
+    grassLoad: GrassLoadCondition = 'normal',
+): MowingStats {
+    let totalMeters = 0;
+    const segments = path.features.length;
+
+    path.features.forEach(feature => {
+        totalMeters += turf.length(feature, { units: 'meters' });
+    });
+
+    const distanceFeet = totalMeters * 3.28084;
+
+    // Time estimation:
+    // 1. Driving time (Distance / Speed)
+    // 2. Turn penalty (6 seconds per segment connection)
+    const metersPerSecond = (speedMph * 1609.34) / 3600;
+    const drivingMinutes = (totalMeters / (metersPerSecond || 0.1)) / 60;
+    const turnPenaltyMinutes = (segments * 6) / 60;
+    const totalMinutes = drivingMinutes + turnPenaltyMinutes;
+
+    let fuelLiters: number | undefined;
+    let fuelGallons: number | undefined;
+    if (mowerProfile) {
+        const durationHours = totalMinutes / 60;
+        const loadMultiplier = LOAD_FUEL_MULTIPLIER[grassLoad];
+        fuelLiters = Math.round(durationHours * mowerProfile.fuelConsumptionRateLh * loadMultiplier * 100) / 100;
+        fuelGallons = Math.round((fuelLiters / 3.785) * 1000) / 1000;
+    }
+
+    return {
+        distanceFeet: Math.round(distanceFeet),
+        durationMinutes: Math.round(totalMinutes),
+        passCount: segments,
+        ...(fuelLiters !== undefined ? { fuelLiters, fuelGallons } : {}),
     };
 }

@@ -6,6 +6,7 @@ import { ActiveMowBanner } from "@/components/ActiveMowBanner";
 import { PWAProvider } from "next-pwa-pack";
 import { WebMCPProvider } from "@/components/WebMCPProvider";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { ExportButton } from "@/components/ExportButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,11 +37,12 @@ export default function RootLayout({
       >
         <WebMCPProvider>
           {isDev ? (
-            <div className="relative flex min-h-screen flex-col">
+            <div id="app-root" className="relative flex min-h-screen flex-col">
               <OfflineBanner />
               <div className="flex-1">{children}</div>
               <ActiveMowBanner />
               <BottomNav />
+              <ExportButton />
               <script dangerouslySetInnerHTML={{
                 __html: `
               if ('serviceWorker' in navigator) {
@@ -54,11 +56,12 @@ export default function RootLayout({
             </div>
           ) : (
             <PWAProvider>
-              <div className="relative flex min-h-screen flex-col">
+              <div id="app-root" className="relative flex min-h-screen flex-col">
                 <OfflineBanner />
                 <div className="flex-1">{children}</div>
                 <ActiveMowBanner />
                 <BottomNav />
+                <ExportButton />
               </div>
               <script dangerouslySetInnerHTML={{
                 __html: `

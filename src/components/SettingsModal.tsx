@@ -2,9 +2,10 @@
 
 import { useStore } from "@/lib/store";
 import { getSeedData } from "@/lib/seed-data";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Settings, Download, Upload, Database, Trash2 } from "lucide-react";
+import { Settings, Download, Upload, Database, Trash2, Camera } from "lucide-react";
+import { exportToPDF } from "@/lib/export-utils";
 
 export function SettingsModal() {
     const store = useStore();
@@ -99,12 +100,22 @@ export function SettingsModal() {
                     <Settings className="w-5 h-5" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md premium-glass glass-edge-highlight border-primary/30 text-foreground overflow-hidden">
+            <DialogContent className="!fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] sm:max-w-md premium-glass glass-edge-highlight border border-primary/30 text-white overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] p-6 sm:rounded-2xl w-[95vw] sm:w-full rounded-2xl">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
                 <DialogTitle className="text-xl font-black uppercase tracking-widest text-white drop-shadow-md">Settings & Data</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                    Manage your app data, export backups, or capture a PDF snapshot.
+                </DialogDescription>
                 <div className="space-y-4 pt-4">
                     <Button onClick={handleExport} className="w-full glass-card hover:glass-card-hover border-white/10 justify-start transition-all text-white">
                         <Download className="w-4 h-4 mr-3 text-primary" /> Export All Data (JSON)
+                    </Button>
+
+                    <Button 
+                        onClick={() => exportToPDF('app-root', `mowlog-snapshot-${new Date().toISOString().split('T')[0]}`)} 
+                        className="w-full glass-card hover:glass-card-hover border-white/10 justify-start transition-all text-white"
+                    >
+                        <Camera className="w-4 h-4 mr-3 text-primary" /> Export PDF (Snapshot)
                     </Button>
 
                     <div className="relative">

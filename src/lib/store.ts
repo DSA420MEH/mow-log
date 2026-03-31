@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { MowingEvent, WateringEvent, FertilizingEvent } from './schemas';
 import type { RouteStop, OptimizedRoute } from './route-optimizer';
 import type { Feature, Polygon } from 'geojson';
+import type { MowerProfile } from './lawn-intelligence';
 
 export type BillingType = 'Regular' | 'PerCut';
 
@@ -23,6 +24,55 @@ export interface Client {
     routeScreenshot?: string; // base64 data URL of route overlay on satellite
     lawnBoundary?: Feature<Polygon>; // GeoJSON polygon of the outer lawn
     obstacles?: Feature<Polygon>[]; // Array of GeoJSON obstacle polygons
+    mowerSize?: string;
+    mowerDischarge?: string;
+    mowerType?: 'standard' | 'zero-turn';
+}
+
+export interface Quote {
+    id: string;
+    type: 'quote';
+    clientId?: string;
+    clientName: string;
+    clientAddress: string;
+    lawnSqft?: number;
+    serviceType: string;
+    visits?: number;
+    ratePerVisit?: number;
+    seasonTotal?: number;
+    additionalServices: { name: string; price: number }[];
+    notes?: string;
+    validUntil: string;
+    createdAt: string;
+    status: 'open' | 'expired';
+    hstApplied: boolean;
+    hstAmount: number;
+    zones?: { id: string; sqft: number }[];
+}
+
+export interface Invoice {
+    id: string;
+    type: 'invoice';
+    clientId?: string;
+    clientName: string;
+    clientAddress: string;
+    lawnSqft?: number;
+    serviceType: string;
+    servicePeriod: { start: string; end: string };
+    visits: number;
+    ratePerVisit: number;
+    grandTotal: number;
+    additionalServices: { name: string; price: number }[];
+    paymentMethod: string;
+    paymentInstructions?: string;
+    notes?: string;
+    invoiceDate: string;
+    dueDate: string;
+    paidAt?: string;
+    status: 'unpaid' | 'paid';
+    hstApplied: boolean;
+    hstAmount: number;
+    convertedFromQuoteId?: string;
 }
 
 export interface Session {
@@ -72,11 +122,36 @@ export interface ServiceInterval {
 
 export interface Equipment {
     id: string;
-    name: string;            // "Honda HRX217"
+    name: string;            // "Toro TimeCutter 75750"
     type: 'mower' | 'trimmer' | 'blower' | 'other';
     currentHours: number;
     serviceIntervals: ServiceInterval[];
+    /** Fuel/speed profile for operational cost calculations (mowers only) */
+    mowerProfile?: MowerProfile;
 }
+
+/** Default profile for the Toro TimeCutter 75750 (50", 23 HP Kawasaki) */
+const DEFAULT_TORO_75750: Equipment = {
+    id: 'toro-timecutter-75750',
+    name: 'Toro TimeCutter 75750',
+    type: 'mower',
+    currentHours: 0,
+    serviceIntervals: [
+        {
+            id: 'blade-sharpening-01',
+            name: 'Blade Sharpening',
+            intervalHours: 25,
+            lastServiceHours: 0,
+            lastServiceDate: new Date().toISOString(),
+        },
+    ],
+    mowerProfile: {
+        fuelConsumptionRateLh: 4.5,           // 1.2 GPH @ normal load
+        transitFuelConsumptionRateLh: 2.0,    // ~0.53 GPH @ light load / transit
+        transitSpeedMph: 7.0,                 // Mow-speed transit between properties
+        bladeSharpenIntervalHours: 25,
+    },
+};
 
 interface AppState {
     clients: Client[];
@@ -84,6 +159,8 @@ interface AppState {
     gasLogs: GasLog[];
     maintenanceLogs: MaintenanceLog[];
     equipment: Equipment[];
+    quotes: Quote[];
+    invoices: Invoice[];
 
     // Lawn Care Events
     mowingEvents: MowingEvent[];
@@ -131,6 +208,11 @@ interface AppState {
 
     addGasLog: (log: Omit<GasLog, 'id' | 'date'>) => void;
     addMaintenanceLog: (log: Omit<MaintenanceLog, 'id' | 'date' | 'totalCost'>) => void;
+    addQuote: (quote: Quote) => void;
+    deleteQuote: (id: string) => void;
+    addInvoice: (invoice: Invoice) => void;
+    updateInvoice: (id: string, invoice: Partial<Invoice>) => void;
+    deleteInvoice: (id: string) => void;
 
     // Event Logging Actions
     addMowingEvent: (event: Omit<MowingEvent, 'id' | 'date'>) => void;
@@ -153,6 +235,9 @@ interface AppState {
     setFuelCostPerKm: (rate: number) => void;
 
     // Equipment tracking
+    /** ID of the Equipment record currently used for fuel/transit estimates */
+    activeMowerProfileId: string | null;
+    setActiveMowerProfile: (equipmentId: string | null) => void;
     addEquipment: (eq: Omit<Equipment, 'id' | 'currentHours'>) => void;
     markServiceDone: (equipmentId: string, serviceId: string) => void;
     deleteEquipment: (id: string) => void;
@@ -170,7 +255,10 @@ export const useStore = create<AppState>()(
             sessions: [],
             gasLogs: [],
             maintenanceLogs: [],
-            equipment: [],
+            equipment: [DEFAULT_TORO_75750],
+            quotes: [],
+            invoices: [],
+            activeMowerProfileId: DEFAULT_TORO_75750.id,
             mowingEvents: [],
             wateringEvents: [],
             fertilizingEvents: [],
@@ -427,6 +515,33 @@ export const useStore = create<AppState>()(
                     };
                 }),
 
+            addQuote: (quote) =>
+                set((state) => ({
+                    quotes: [...state.quotes, quote],
+                })),
+
+            deleteQuote: (id) =>
+                set((state) => ({
+                    quotes: state.quotes.filter((quote) => quote.id !== id),
+                })),
+
+            addInvoice: (invoice) =>
+                set((state) => ({
+                    invoices: [...state.invoices, invoice],
+                })),
+
+            updateInvoice: (id, invoice) =>
+                set((state) => ({
+                    invoices: state.invoices.map((entry) =>
+                        entry.id === id ? { ...entry, ...invoice } : entry
+                    ),
+                })),
+
+            deleteInvoice: (id) =>
+                set((state) => ({
+                    invoices: state.invoices.filter((invoice) => invoice.id !== id),
+                })),
+
             addMowingEvent: (event) =>
                 set((state) => ({
                     mowingEvents: [
@@ -477,6 +592,9 @@ export const useStore = create<AppState>()(
             setFuelCostPerKm: (rate) => set(() => ({ fuelCostPerKm: rate })),
 
             // Equipment tracking
+            setActiveMowerProfile: (equipmentId) =>
+                set(() => ({ activeMowerProfileId: equipmentId })),
+
             addEquipment: (eq) =>
                 set((state) => ({
                     equipment: [
@@ -541,6 +659,41 @@ export const useStore = create<AppState>()(
                         }));
                     }
                 }
+
+                // Seed default Toro mower for existing users with no equipment
+                if (persistedState && Array.isArray(persistedState.equipment) && persistedState.equipment.length === 0) {
+                    persistedState.equipment = [DEFAULT_TORO_75750];
+                    persistedState.activeMowerProfileId = DEFAULT_TORO_75750.id;
+                }
+
+                // Ensure activeMowerProfileId exists (field added in this migration)
+                if (persistedState && persistedState.activeMowerProfileId === undefined) {
+                    const firstMower = persistedState.equipment?.find((e: Equipment) => e.type === 'mower');
+                    persistedState.activeMowerProfileId = firstMower?.id ?? null;
+                }
+
+                if (persistedState && !Array.isArray(persistedState.quotes)) {
+                    persistedState.quotes = [];
+                }
+                if (persistedState && Array.isArray(persistedState.quotes)) {
+                    persistedState.quotes = persistedState.quotes.map((quote: Quote) => ({
+                        ...quote,
+                        hstApplied: quote.hstApplied ?? false,
+                        hstAmount: quote.hstAmount ?? 0,
+                    }));
+                }
+
+                if (persistedState && !Array.isArray(persistedState.invoices)) {
+                    persistedState.invoices = [];
+                }
+                if (persistedState && Array.isArray(persistedState.invoices)) {
+                    persistedState.invoices = persistedState.invoices.map((invoice: Invoice) => ({
+                        ...invoice,
+                        hstApplied: invoice.hstApplied ?? false,
+                        hstAmount: invoice.hstAmount ?? 0,
+                    }));
+                }
+
                 return persistedState;
             }
         }

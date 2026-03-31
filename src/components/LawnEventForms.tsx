@@ -17,6 +17,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,46 +35,39 @@ export function LawnEventForms() {
     const wateringFormSchema = WateringEventSchema.omit({ id: true, date: true });
     const fertilizingFormSchema = FertilizingEventSchema.omit({ id: true, date: true });
 
-    type MowingInput = z.input<typeof mowingFormSchema>;
-    type MowingOutput = z.output<typeof mowingFormSchema>;
-    type WateringInput = z.input<typeof wateringFormSchema>;
-    type WateringOutput = z.output<typeof wateringFormSchema>;
-    type FertilizingInput = z.input<typeof fertilizingFormSchema>;
-    type FertilizingOutput = z.output<typeof fertilizingFormSchema>;
-
     // --- Mowing Form ---
-    const mowForm = useForm<MowingInput, unknown, MowingOutput>({
+    const mowForm = useForm<z.input<typeof mowingFormSchema>, unknown, z.output<typeof mowingFormSchema>>({
         resolver: zodResolver(mowingFormSchema),
         defaultValues: { type: "mow", cutHeightInches: 2.5, grassBagged: false, deckCleaned: false, notes: "" },
     });
     const grassBagged = useWatch({ control: mowForm.control, name: "grassBagged" }) ?? false;
     const deckCleaned = useWatch({ control: mowForm.control, name: "deckCleaned" }) ?? false;
 
-    const onMowSubmit = (data: MowingOutput) => {
+    const onMowSubmit = (data: z.output<typeof mowingFormSchema>) => {
         addMowingEvent(data);
         mowForm.reset();
         setOpen(false);
     };
 
     // --- Watering Form ---
-    const waterForm = useForm<WateringInput, unknown, WateringOutput>({
+    const waterForm = useForm<z.input<typeof wateringFormSchema>, unknown, z.output<typeof wateringFormSchema>>({
         resolver: zodResolver(wateringFormSchema),
         defaultValues: { type: "water", durationMinutes: 30, waterAmountInches: 0.5, notes: "" },
     });
 
-    const onWaterSubmit = (data: WateringOutput) => {
+    const onWaterSubmit = (data: z.output<typeof wateringFormSchema>) => {
         addWateringEvent(data);
         waterForm.reset();
         setOpen(false);
     };
 
     // --- Fertilizing Form ---
-    const fertilizeForm = useForm<FertilizingInput, unknown, FertilizingOutput>({
+    const fertilizeForm = useForm<z.input<typeof fertilizingFormSchema>, unknown, z.output<typeof fertilizingFormSchema>>({
         resolver: zodResolver(fertilizingFormSchema),
         defaultValues: { type: "fertilize", productName: "", npkRatio: "", applicationRate: "", notes: "" },
     });
 
-    const onFertilizeSubmit = (data: FertilizingOutput) => {
+    const onFertilizeSubmit = (data: z.output<typeof fertilizingFormSchema>) => {
         addFertilizingEvent(data);
         fertilizeForm.reset();
         setOpen(false);

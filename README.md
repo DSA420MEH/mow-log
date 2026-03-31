@@ -8,14 +8,15 @@ A premium dark-mode lawn care management app for tracking mowing sessions, clien
 |-------|-----------|
 | Framework | **Next.js 16** (App Router, Turbopack) |
 | Language | **TypeScript** |
-| Styling | **Tailwind CSS** + custom dark theme with neon green (`#c3ff00`) accent |
-| UI Components | **shadcn/ui** (Card, Button, Dialog, etc.) |
+| Runtime | **React 19** |
+| Styling | **Tailwind CSS 4** + custom dark theme with neon green (`#c3ff00`) accent |
+| UI Components | **shadcn/ui** or **Stitch** premium components (Card, Button, Dialog, etc.) |
 | State | **Zustand** (persisted to `localStorage`) |
 | Icons | **Lucide React** |
-| Maps | **Leaflet** / **Mapbox GL** |
+| Maps | **Leaflet** / **Mapbox GL** + **turf.js** for geometry |
 | Weather | **Open-Meteo API** (free, no key required) |
 | Charts | **Recharts** |
-| AI | **Genkit** + **Google AI** (receipt scanning) |
+| AI | **Genkit** + **Google AI** (receipt scanning & smart features) |
 | Validation | **Zod** + **React Hook Form** |
 
 ## Deployment
@@ -41,37 +42,36 @@ Code change → git add → git commit → git push origin main → Vercel auto-
 
 | Route | Description |
 |-------|-------------|
-| `/addresses` | Main dashboard — client cards with swipe panels (Stats/Info/Route), weather widget, tab switcher (Regular/Per Cut) |
-| `/logs` | Mowing session logs, gas logs, maintenance logs with event forms |
-| `/route-planner` | Leaflet map with client markers and route optimization |
-| `/stats` | Financial charts, workday stats, revenue/profit tracking |
-| `/calendar` | Calendar view of mowing sessions |
+| `/addresses` | Main dashboard — client cards with swipe panels (Stats/Info/Route), weather widget, tab switcher (Regular/Per Cut). Includes unified filter/search. |
+| `/logs` | Mowing session logs, gas logs, maintenance logs with event forms. |
+| `/route-planner` | Leaflet map with client markers, boundary drawing/saving, and route optimization. Supports persistence of viewport and zoom. |
+| `/stats` | Financial charts, workday stats, revenue/profit tracking. |
+| `/calendar` | Weekly/Monthly view of mowing sessions. |
 
-## Key Architecture Notes
+## Key Architecture & Features
 
-### State Management (Zustand)
-- **All app data lives in `localStorage`** via Zustand's `persist` middleware
-- Store is defined in `src/lib/store.ts`
-- Seed data (`src/lib/seed-data.ts`) only loads when `clients.length === 0` (first visit)
-- **If you change seed data defaults (like home coordinates), users with existing data must clear localStorage to see the update**
+### State Management & Persistence (Zustand)
+- **All app data lives in `localStorage`** via Zustand's `persist` middleware.
+- Store is defined in `src/lib/store.ts`.
+- **Map Persistence:** Zoom and center state are persisted via `usePersistentMapState` to ensure a consistent experience across reloads.
+- Seed data (`src/lib/seed-data.ts`) only loads when `clients.length === 0`.
+
+### Smart Address Search
+- Uses a fallback mechanism: attempts primary geocoding, then falls back to **Nominatim** (OpenStreetMap) if needed to ensure robust address lookup regardless of API availability.
 
 ### Home Location & Weather
-- Home address coordinates: **Moncton, NB, Canada** (`46.0878, -64.7782`)
-- Weather widget uses the **Open-Meteo API** — no API key needed
-- Widget only renders when `homeAddress`, `homeLat`, and `homeLng` are set in the store
-- Weather data cached for 1 hour via Next.js `revalidate`
+- Home address coordinates: **Moncton, NB, Canada** (`46.0878, -64.7782`).
+- Weather widget uses the **Open-Meteo API** — no API key needed.
+- Cache-revalidated every 1 hour.
 
 ### Design System
-- **DO NOT change the existing design** unless explicitly asked
-- Background: `#0a0f0d` (deep dark green-black)
-- Primary accent: `#c3ff00` (neon green) defined as `--primary` in CSS
-- Fonts: **Geist** (heading) + **Geist Mono** (mono) loaded via `next/font/google`
-- Glass cards: `bg-white/[0.03]` with `backdrop-blur` and neon borders
-- All components use the `glass-card` CSS class for the frosted glass effect
+- **Background:** `#0a0f0d` (deep dark green-black).
+- **Primary Accent:** `#c3ff00` (neon green) defined as `--primary`.
+- **Glassmorphism:** `bg-white/[0.03]` with `backdrop-blur` and neon borders. All glass components use the `.glass-card` utility.
+- **Typography:** **Geist** and **Geist Mono**.
 
-### Build Quirks
-- `next.config.ts` has `ignoreBuildErrors: true` due to a `@types/mapbox__point-geometry` type conflict
-- This does NOT affect runtime — it's purely a build-time TypeScript issue
+### Build Notes
+- `next.config.ts` ignores build errors for type conflicts in some map dependencies (`@types/mapbox__point-geometry`).
 
 ## Local Development
 
@@ -82,57 +82,39 @@ npm run dev        # → http://localhost:3000
 npm run build      # Production build (verify before pushing)
 ```
 
-### Environment Variables
-- `.env.local` — contains any local-only config
-- No paid API keys required (Open-Meteo is free, Mapbox uses a public token)
-
 ## File Structure (Key Files)
 
 ```
 src/
 ├── app/
-│   ├── addresses/page.tsx    ← Main dashboard (WeatherWidget lives here)
-│   ├── logs/page.tsx         ← Session & gas logs
-│   ├── route-planner/page.tsx
-│   ├── stats/page.tsx
-│   ├── calendar/page.tsx
-│   ├── globals.css           ← Design tokens, DO NOT modify casually
-│   └── layout.tsx            ← Root layout with fonts, DO NOT modify casually
+│   ├── addresses/page.tsx    ← Main dashboard
+│   ├── route-planner/        ← Map & Route Optimization
+│   ├── globals.css           ← Design tokens & Tailwind 4 layers
+│   └── layout.tsx            ← Root layout
 ├── components/
-│   ├── WeatherWidget.tsx     ← Open-Meteo weather display
-│   ├── SwipeableClientCard.tsx ← Main client card with 3 swipe panels
-│   ├── BottomNav.tsx         ← Fixed bottom navigation bar
-│   ├── ClientForm.tsx        ← Add/edit client dialog
+│   ├── WeatherWidget.tsx     ← Open-Meteo integrated display
+│   ├── SwipeableClientCard.tsx ← Dashboard cards with 3-way swipe
+│   ├── UnifiedGameMap.tsx    ← Shared map component
 │   └── ui/                   ← shadcn/ui primitives
+├── hooks/
+│   ├── usePersistentMapState.ts ← Persists map viewport
 ├── lib/
-│   ├── store.ts              ← Zustand store (ALL app state)
-│   ├── seed-data.ts          ← Demo data + default home location
-│   ├── weather-api.ts        ← Open-Meteo API client
-│   ├── selectors.ts          ← Computed values (profit, alerts)
-│   └── utils.ts              ← Tailwind cn() helper
+│   ├── store.ts              ← Zustand (state & persistence)
+│   ├── weather-api.ts        ← API integration
+│   └── selectors.ts          ← Business logic & computed stats
 ```
 
-## Agent Rules
+## Agent Quality Gates
 
-1. **Don't touch the design** unless the user explicitly asks for design changes
-2. **Always test locally first** — run `npm run dev` and use the browser subagent on `http://localhost:3000` to verify changes look correct on both mobile and desktop viewports **before** pushing to GitHub. Never push untested code to `main`.
-3. **Always `npm run build`** after local testing to catch strict Next.js/Turbopack errors before pushing
-4. **Push to `main`** to deploy — Vercel auto-deploys, no CLI needed
-5. **The live URL has a hyphen:** `mow-log.vercel.app`, NOT `mowlog.vercel.app`
-6. **localStorage persistence** means seed data changes won't affect existing users unless they clear storage
-7. **Keep commits focused** — don't stage unrelated modified files alongside feature changes
+1. **Don't touch the design** unless explicitly asked.
+2. **Test across viewports** (Mobile/Desktop) before pushing.
+3. **Always run `npm run build`** to catch strict Next.js/React 19 errors.
+4. **Push to `main`** to trigger live deployment.
+5. **localStorage awareness** — updates to defaults require storage clearing for existing users.
 
 ---
 
-## Slash Commands & Workflows
+## Slash Commands
 
 ### `/mowlog`
-Use this slash command when starting a new chat about the MowLog app. It automatically loads:
-- Full project overview and tech stack
-- File structure and key component locations
-- Design system (colors, fonts, glass-card style)
-- Deployment info (URL, branch, auto-deploy)
-- Quick actions for common tasks
-- Quality gates reminder
-
-**Trigger:** Type `/mowlog` in a new chat to switch context to this project.
+Loads the MowLog project context including tech stack, architecture, and current roadmap.

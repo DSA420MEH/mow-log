@@ -300,7 +300,7 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
                         <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-4">
                             <div className="space-y-2 relative">
                                 <Label htmlFor="address" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Street Address</Label>
-                                <Input id="address" value={address} onChange={handleAddressChange} className="stealth-noir-glass border-white/10 focus-visible:ring-primary h-12" placeholder="123 Main St" />
+                                <Input id="address" value={address} onChange={handleAddressChange} suppressHydrationWarning className="stealth-noir-glass border-white/10 focus-visible:ring-primary h-12" placeholder="123 Main St" />
 
                                 {/* Autocomplete Dropdown */}
                                 {suggestions.length > 0 && (
@@ -321,11 +321,11 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="city" className="text-[10px] uppercase tracking-widest font-bold opacity-70">City</Label>
-                                    <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} className="stealth-noir-glass border-white/10 h-12" placeholder="Springfield" />
+                                    <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} suppressHydrationWarning className="stealth-noir-glass border-white/10 h-12" placeholder="Springfield" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="zip" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Postal Code</Label>
-                                    <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} className="stealth-noir-glass border-white/10 h-12" placeholder="12345" />
+                                    <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} suppressHydrationWarning className="stealth-noir-glass border-white/10 h-12" placeholder="12345" />
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -350,20 +350,20 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
                         <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Client Name</Label>
-                                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="stealth-noir-glass border-white/10 h-12" placeholder="John Doe" />
+                                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} suppressHydrationWarning className="stealth-noir-glass border-white/10 h-12" placeholder="John Doe" />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="phone" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Phone Number</Label>
-                                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="stealth-noir-glass border-white/10 h-12" placeholder="(555) 123-4567" />
+                                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} suppressHydrationWarning className="stealth-noir-glass border-white/10 h-12" placeholder="(555) 123-4567" />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-2">
                                     <Label htmlFor="email" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Email</Label>
-                                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="stealth-noir-glass border-white/10 h-12" placeholder="john@example.com" />
+                                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} suppressHydrationWarning className="stealth-noir-glass border-white/10 h-12" placeholder="john@example.com" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="contract" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Contract</Label>
-                                    <Input id="contract" value={contractLength} onChange={(e) => setContractLength(e.target.value)} className="stealth-noir-glass border-white/10 h-12" placeholder="6 Months" />
+                                    <Input id="contract" value={contractLength} onChange={(e) => setContractLength(e.target.value)} suppressHydrationWarning className="stealth-noir-glass border-white/10 h-12" placeholder="6 Months" />
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -372,6 +372,7 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
                                     id="notes"
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
+                                    suppressHydrationWarning
                                     className="w-full min-h-[100px] rounded-md border border-white/10 stealth-noir-glass px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 text-white"
                                     placeholder="Gate code is 1234. Watch out for the dog."
                                 />
@@ -407,7 +408,7 @@ export function ClientForm({ customTrigger, initialData, open: externalOpen, onO
                                 <Label htmlFor="amount" className="text-[10px] uppercase tracking-widest font-bold opacity-70">Amount ($)</Label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-3 text-primary/60 font-bold">$</span>
-                                    <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="stealth-noir-glass border-white/10 pl-8 text-2xl font-black h-14 text-white" placeholder="50.00" />
+                                    <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} suppressHydrationWarning className="stealth-noir-glass border-white/10 pl-8 text-2xl font-black h-14 text-white" placeholder="50.00" />
                                 </div>
                                 <p className="text-[10px] text-muted-foreground italic">
                                     {billingType === "Regular" ? "Charged monthly regardless of visit count." : "Charged each time a session is completed."}
